@@ -42,6 +42,7 @@ var (
 
 type Config struct {
 	DisableImpersonation bool
+	NamespaceOverride    string
 	TokenReview          bool
 
 	FlushInterval   time.Duration
@@ -229,9 +230,18 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, errNoImpersonationConfig
 	}
 
+	// set up the custom namespace round tripper
+	customNamespaceRT := CustomNamespaceRoundTripper{
+		Transport: p.clientTransport,
+		NamespaceOverride: p.config.NamespaceOverride,
+	}
+	
+	
 	// Set up impersonation request.
-	rt := transport.NewImpersonatingRoundTripper(*impersonationConf.ImpersonationConfig, p.clientTransport)
+	rt := transport.NewImpersonatingRoundTripper(*impersonationConf.ImpersonationConfig, &customNamespaceRT)
 
+	
+	// set up the impersonation round tripper
 	// Log the request
 	logging.LogSuccessfulRequest(req, *impersonationConf.InboundUser, *impersonationConf.ImpersonatedUser)
 
