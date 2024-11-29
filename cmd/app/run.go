@@ -78,8 +78,8 @@ func buildRunCommand(stopCh <-chan struct{}, opts *options.Options) *cobra.Comma
 				TokenReview:          opts.App.TokenPassthrough.Enabled,
 				DisableImpersonation: opts.App.DisableImpersonation,
 
-				NamespaceOverride:       opts.App.NamespaceOverride,
-				
+				SuffixNSMappingFile: opts.App.SuffixNSMappingFile,
+
 				FlushInterval:   opts.App.FlushInterval,
 				ExternalAddress: opts.SecureServing.BindAddress.String(),
 

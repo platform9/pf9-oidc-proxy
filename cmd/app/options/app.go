@@ -11,7 +11,7 @@ import (
 )
 
 type KubeOIDCProxyOptions struct {
-	NamespaceOverride    string
+	SuffixNSMappingFile  string
 	DisableImpersonation bool
 	ReadinessProbePort   int
 
@@ -37,10 +37,11 @@ func NewKubeOIDCProxyOptions(nfs *cliflag.NamedFlagSets) *KubeOIDCProxyOptions {
 }
 
 func (k *KubeOIDCProxyOptions) AddFlags(fs *pflag.FlagSet) *KubeOIDCProxyOptions {
-	fs.StringVar(&k.NamespaceOverride, "namespace-override", "",
-		"Namespace to override in Kubernetes API requests. "+
-		"By default, the namespace in the token is used.")
-		
+	fs.StringVar(&k.SuffixNSMappingFile, "ns-mapping-file", "",
+		"(Alpha) A json file containing the suffix to namespace mapping. "+
+	"The suffix is typicall the last path in the server URL in kubeconfig."+
+		"for example https://kubernetes.default.svc:443/foobar/api/v1/... here the suffix is foobar")
+
 	fs.BoolVar(&k.DisableImpersonation, "disable-impersonation", k.DisableImpersonation,
 		"(Alpha) Disable the impersonation of authenticated requests. All "+
 			"authenticated requests will be forwarded as is.")
