@@ -17,10 +17,10 @@ graph TD;
 ```
 
 ## Changes the the configuration
-A new parameter called 'namespace-override' was added that would change the namespace in the request 
-from
-`https://kube-api-svc/api/v1/namesapaces/{namespace}/pods` to
-`https://kube-api-svc/api/v1/namespaces/{namespace-override}/pods`
+Added a configuration for namespace mapping
+```
+--ns-mapping-file=/home/rparikh.linux/oidc/suffix-ns-mapping.json
+```
 
 ## Demo Configuration
 
