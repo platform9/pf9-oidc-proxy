@@ -103,7 +103,7 @@ func NewCustomNamespaceRoundTripper(suffixNSMappingFile string) (*CustomNamespac
 
 	mappingManager, err := NewMappingManager(suffixNSMappingFile)
 	if err != nil {
-		return nil, fmt.Errorf("Error initializing mapping manager:", err)
+		return nil, fmt.Errorf("error initializing mapping manager: %v", err)
 	}
 
 	return &CustomNamespaceRoundTripper{
@@ -135,6 +135,7 @@ func (c *CustomNamespaceRoundTripper) RoundTrip(req *http.Request) (*http.Respon
 }
 
 // modifyNamespaceInPath replaces the namespace in the URL path with the configured one
+// it removes the tenant prefix and replaces the namespace with the configured one
 func (c *CustomNamespaceRoundTripper) modifyNamespaceInPath(path string) string {
 	parts := strings.Split(path, "/")
 	suffix := ""
