@@ -67,7 +67,7 @@ type Proxy struct {
 	noAuthClientTransport http.RoundTripper
 
 	//pf9
-	namespaceTransport   *CustomNamespaceRoundTripper
+	namespaceTransport *CustomNamespaceRoundTripper
 
 	config *Config
 
@@ -162,7 +162,10 @@ func (p *Proxy) Run(stopCh <-chan struct{}) (<-chan struct{}, <-chan struct{}, e
 	}
 	p.clientTransport = clientRT
 
-	p.namespaceTransport.Transport = clientRT
+	if p.namespaceTransport != nil {
+		p.namespaceTransport.Transport = clientRT
+	}
+
 	// No auth round tripper for no impersonation
 	if p.config.DisableImpersonation || p.config.TokenReview {
 		noAuthClientRT, err := p.roundTripperForRestConfig(&rest.Config{
@@ -179,7 +182,9 @@ func (p *Proxy) Run(stopCh <-chan struct{}) (<-chan struct{}, <-chan struct{}, e
 		}
 
 		p.noAuthClientTransport = noAuthClientRT
-		p.namespaceTransport.Transport = noAuthClientRT
+		if p.namespaceTransport != nil {
+			p.namespaceTransport.Transport = noAuthClientRT
+		}
 	}
 
 	// get API server url
@@ -241,8 +246,14 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, errNoImpersonationConfig
 	}
 
+	delegateTransport := p.clientTransport
+
+	if p.namespaceTransport != nil {
+		delegateTransport = p.namespaceTransport
+	}
+
 	// Set up impersonation request.
-	rt := transport.NewImpersonatingRoundTripper(*impersonationConf.ImpersonationConfig, p.namespaceTransport)
+	rt := transport.NewImpersonatingRoundTripper(*impersonationConf.ImpersonationConfig, delegateTransport)
 
 	// set up the impersonation round tripper
 	// Log the request
