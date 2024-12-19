@@ -1,3 +1,177 @@
+# pf9-oidc-proxy
+
+`pf9-oidc-proxy` is a proof of concept for Kubernetes authentication using OIDC for the
+`kaapi` use case. The code for the changes are in `pf9-oidc` branch.
+
+At the heart it is `kube-oidc-proxy`, a reverse proxy server to authenticate users using OIDC and forward requests to the Kubernetes API server by impersonating the authenticated user.
+
+The `pf9` part of it is a simple fix that `overrides` the namespace with the configured namespace.
+
+Here is the POC that I tested.
+
+```mermaid
+graph TD;
+  kubectl-->pf9-oidc-proxy;
+  pf9-oidc-proxy-->dex;
+  pf9-oidc-proxy-->kube-apiserver;
+```
+
+## Changes the the configuration
+Added a configuration for namespace mapping
+```
+--ns-mapping-file=/home/rparikh.linux/oidc/suffix-ns-mapping.json
+```
+
+## Demo Configuration
+
+Running the proxy `pf9-oidc-proxy` commandline:
+
+```bash
+./pf9-oidc-proxy/bin/kube-oidc-proxy \
+--oidc-issuer-url=https://localhost:5554/dex \
+--oidc-client-id=kubernetes \
+--oidc-username-claim=email \
+--oidc-groups-claim=groups \
+--secure-port=8443 \
+--kubeconfig=./k3s.yaml \
+--ns-mapping-file=/home/rparikh.linux/oidc/suffix-ns-mapping.json \
+--oidc-ca-file=/home/rparikh.linux/oidc/ca.crt \
+--tls-cert-file=/home/rparikh.linux/oidc/server.crt \
+--tls-private-key-file=/home/rparikh.linux/oidc/server.key \
+--insecure-skip-tls-verify \
+--v=4
+
+```
+
+__The Suffix Mapping file__
+
+```json
+{
+        "tenant1":"n1",
+        "tenant2":"n2",
+        "admintenant":"kube-system"
+}
+```
+__The Dex configuration__
+
+```yaml
+issuer: https://localhost:5554/dex
+storage:
+  type: memory
+
+web:
+  https: 127.0.0.1:5554
+  tlsCert: /home/rparikh.linux/oidc/server.crt
+  tlsKey: /home/rparikh.linux/oidc/server.key
+# Configuration for telemetry
+telemetry:
+  http: 0.0.0.0:5558
+# If this option isn't chosen clients may be added through the gRPC API.
+staticClients:
+- id: kubernetes
+  redirectURIs:
+  - 'http://localhost:18000'
+  name: 'kubernetes'
+  secret: kubernetessecret
+  scopes:
+  - openid
+  - profile
+  - email
+  - groups
+connectors:
+- type: mockCallback
+  id: mock
+  name: kubernetes
+enablePasswordDB: true
+# The group configuration with staticPasswords doesn't work
+staticPasswords:
+- email: "admin@example.com"
+  # bcrypt hash of the string "password": $(echo password | htpasswd -BinC 10 admin | cut -d: -f2)
+  hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+  username: "admin"
+  userID: "admin"
+- email: "admin1@example.com"
+  # bcrypt hash of the string "password": $(echo password | htpasswd -BinC 10 admin | cut -d: -f2)
+  hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+  username: "admin1"
+  userID: "admin1"
+```
+
+__Start Dex__
+
+```bash
+ ./dex/bin/dex serve ./dex.yaml
+```
+
+__Role and RoleBinding__
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: n1
+  name: n1-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: n1
+  name: n1-bindings
+subjects:
+- kind: User
+  name: admin@example.com  # This matches the group assigned to alice in Dex
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: n1-role
+  apiGroup: rbac.authorization.k8s.io
+  ```
+
+  __Kubeconfig__
+
+  ```yaml
+  apiVersion: v1
+kind: Config
+preferences: {}
+
+# Cluster information
+clusters:
+- name: my-cluster
+  cluster:
+    server: https://localhost:8443/tenant1/
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZqekNDQTNlZ0F3SUJBZ0lVV3JGa0ZoeGJ6M2FSNFArcHRkLy9pMjhmNDBrd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1Z6RUxNQWtHQTFVRUJoTUNWVk14Q3pBSkJnTlZCQWdNQWtOQk1Rd3dDZ1lEVlFRSERBTlRTa014RERBSwpCZ05WQkFvTUExQkdPVEVMTUFrR0ExVUVDd3dDUlVReEVqQVFCZ05WQkFNTUNXeHZZMkZzYUc5emREQWVGdzB5Ck5ERXhNamd3TXpBek16RmFGdzB6TkRFeE1qWXdNekF6TXpGYU1GY3hDekFKQmdOVkJBWVRBbFZUTVFzd0NRWUQKVlFRSURBSkRRVEVNTUFvR0ExVUVCd3dEVTBwRE1Rd3dDZ1lEVlFRS0RBTlFSamt4Q3pBSkJnTlZCQXNNQWtWRQpNUkl3RUFZRFZRUUREQWxzYjJOaGJHaHZjM1F3Z2dJaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQ0R3QXdnZ0lLCkFvSUNBUURLd2NHRks2dVlWczRncjUyZ3hHOW5XODA3NUkremJ0M1Z6dU94aVgveGZQV0Y3ZjE1ZkdpWUxuZmsKZncva05JQnRycDFvOFdOSGZzczQ4MEp1eUpnNzFLQWRZZUpzcGUrbVpBMThrWTV4dVhkcmFHR251eVBtOUJhcApiSnk4TjZ6OHhseGZ6ZDRWb1dydjh6SnBYcVUyc0ZzL2pIeHJZWEpMZlAyS0pGcXAyL2lrbDRFY0tiUGtSVjNFClQwUmc4OHU1SmdvK0o2aHQwcEs2ZVpoaFhPT21uWjA2VXh2bmZLaGZaZ3ZSNjE2TkdONi9VcHphdzhQMGJZRUQKeitaeDNHNWthL1R1U1o1T2J4Z3RmMWc0dWxZRThmOXBGamxFU2tUWlBMLytoUEpVQS9POXZsdUdZMmlaZ3FwTwprWlEvVENGbDQwZmhEOHMya3VuR2g4MzJ0dXBvWEhMSnBMckxmNEVqOFlycE5xNzY5QldTSDFIK0RqRlhsZTVNCjhsZFFZakRBcE9ZZzNBVHpuQjVVN2kwQ05WWDhBaVZHdDRMQXNRWWRxbW1mYjYvWkh2N3dxMmFVblhrSVNXRzEKc1JUdXJvSzlZZUp3ZU1VL0JSRE9EMkxZaEFtWjV2ZDhNTTVDYmwxUStpU0xRRWtyRGM3OVhrckp2ZFZEZVRrUgp3TDhORUhKYTVNb3RYVHZKZXk4b0xlV3U4TlRMOVR5UEhpV28rdkk1SWV2QlczeGMxcVZRZTY1ZGNmWFQ0cVpqCnlvZ2x6VUZBRHRkLzgvR0F2UU1UR1JjNXh1dW5YUXRRRVlqdkNnWU4wODd5MStDODlkT0dLcTNFSXdxQ0drUGUKeDltMjNnUGhVU0FJNVFZREpZQzZDdzEyUUp5REcybklQT0FWOTk5VEdNMzVyaGR5MndJREFRQUJvMU13VVRBZApCZ05WSFE0RUZnUVVrVGZzcU5mNnpxcGU2blp2UFJTSk1HK0lCV0V3SHdZRFZSMGpCQmd3Rm9BVWtUZnNxTmY2CnpxcGU2blp2UFJTSk1HK0lCV0V3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFOQmdrcWhraUc5dzBCQVFzRkFBT0MKQWdFQUpwcUVjMU1VNHNoYjlXTDFKU1dQM3FpdjBrclNwMmg2MThBWTdwK2RpTzZpQjJyL3B4QzUzUkQ5WU41MQpkTm1ZVjdJeHFtMUNNME1kaHVERkRCSDQ5djhqV1Q5ZHFnSjFYZWIrQ3dZWGJXWTJnT3FncVFLdFRLaVlnWWc3Cjd6WjFYWGJ3dkc4MUs2RjVqS0VLR2F5aVVuekpvMi9OejEvaFBRdW1yNDRGdWloMFJEaUY5MVU5YzU5WThqdG4KQXRjMmtmbytKZkNZMERCMkZkcjZ0eEhraE9vSytHRDU5ZFR1c1JqOWprTTJCOFlFVjdSb3F0QUFJVVFPYUR1VgpvNTdOdFdXa2VYdzMyZDY0ODVYK215a2NLZUNialdHejdnQVgyQ1dBd0VxOHRFNGk5cUk5L0R6cW1od1R6Ym9BCnFtdHZDWG9QOXBRWDd6dUp0b3hNZVhRdHI1STBydFNrTG5hd1RCajZCNjZ0STk4UEJ4cThvUlpBU0tnbnVoN00KTFk4MmRkYnV1MjFIZ1hiSVU1TkJxVTR4VGFxdXpHQnRtL3FrUlFXVFR1TFlnQmk1elhPYXZCbUE4VjFQc2QxNQpJQ3pFMGtBV0xLRkYwUjdsSE9GY2gvc09iV2dZV1JHcUUzWFRtb3FmOFBhTlhHQ3dzZGlyc3FKTXRzaHhxeFVjCkFYRk54U3dYakQvYWVBUUd6WTZxTUNKWmJTR2ZoYU1TWkd1NVlsblpDMENXdkhsd3puQkZscmc4S1d2ZU1YQmQKM0ptRlAzNG5Ud2xvWE5hYWxXK1ZKUm1DVU9QR2g1WGd6T3hkZkJ4MDdlc2FlZzhPZGNUN3JRUnZBdkxaN0tEWQowTnpvOHJqeEIwNU92eUhHaFJHTnFsaGtEYjR0TGk5OHpmY3VCQVhGRDU4WnhIOD0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo= 
+
+# User with OIDC authentication
+users:
+- name: oidc-user
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      command: kubectl
+      args:
+      - oidc-login
+      - get-token
+      - --oidc-issuer-url=https://localhost:5554/dex
+      - --oidc-client-id=kubernetes
+      - --oidc-client-secret=kubernetessecret
+      - --certificate-authority=/Users/rparikh/work/kappuccino/ca.crt
+      - --oidc-extra-scope=groups,email,profile
+
+# Context linking cluster and user
+contexts:
+- name: oidc-context
+  context:
+    cluster: my-cluster
+    user: oidc-user
+
+# Set the current context
+current-context: oidc-context
+
+  ```
 # kube-oidc-proxy
 
 `kube-oidc-proxy` is a reverse proxy server to authenticate users using OIDC to

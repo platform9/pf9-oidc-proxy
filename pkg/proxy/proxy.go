@@ -42,6 +42,7 @@ var (
 
 type Config struct {
 	DisableImpersonation bool
+	SuffixNSMappingFile  string
 	TokenReview          bool
 
 	FlushInterval   time.Duration
@@ -64,6 +65,9 @@ type Proxy struct {
 	restConfig            *rest.Config
 	clientTransport       http.RoundTripper
 	noAuthClientTransport http.RoundTripper
+
+	//pf9
+	namespaceTransport   *CustomNamespaceRoundTripper
 
 	config *Config
 
@@ -131,6 +135,11 @@ func New(restConfig *rest.Config,
 		return nil, err
 	}
 
+	namespaceTransport, err := NewCustomNamespaceRoundTripper(config.SuffixNSMappingFile)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Proxy{
 		restConfig:            restConfig,
 		hooks:                 hooks.New(),
@@ -141,6 +150,7 @@ func New(restConfig *rest.Config,
 		oidcRequestAuther:     bearertoken.New(tokenAuther),
 		tokenAuther:           tokenAuther,
 		auditor:               auditor,
+		namespaceTransport:    namespaceTransport,
 	}, nil
 }
 
@@ -152,6 +162,7 @@ func (p *Proxy) Run(stopCh <-chan struct{}) (<-chan struct{}, <-chan struct{}, e
 	}
 	p.clientTransport = clientRT
 
+	p.namespaceTransport.Transport = clientRT
 	// No auth round tripper for no impersonation
 	if p.config.DisableImpersonation || p.config.TokenReview {
 		noAuthClientRT, err := p.roundTripperForRestConfig(&rest.Config{
@@ -168,6 +179,7 @@ func (p *Proxy) Run(stopCh <-chan struct{}) (<-chan struct{}, <-chan struct{}, e
 		}
 
 		p.noAuthClientTransport = noAuthClientRT
+		p.namespaceTransport.Transport = noAuthClientRT
 	}
 
 	// get API server url
@@ -230,8 +242,9 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	// Set up impersonation request.
-	rt := transport.NewImpersonatingRoundTripper(*impersonationConf.ImpersonationConfig, p.clientTransport)
+	rt := transport.NewImpersonatingRoundTripper(*impersonationConf.ImpersonationConfig, p.namespaceTransport)
 
+	// set up the impersonation round tripper
 	// Log the request
 	logging.LogSuccessfulRequest(req, *impersonationConf.InboundUser, *impersonationConf.ImpersonatedUser)
 
