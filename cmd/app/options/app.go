@@ -39,8 +39,8 @@ func NewKubeOIDCProxyOptions(nfs *cliflag.NamedFlagSets) *KubeOIDCProxyOptions {
 func (k *KubeOIDCProxyOptions) AddFlags(fs *pflag.FlagSet) *KubeOIDCProxyOptions {
 	fs.StringVar(&k.SuffixNSMappingFile, "ns-mapping-file", "",
 		"(Alpha) A json file containing the suffix to namespace mapping. "+
-	"The suffix is typicall the last path in the server URL in kubeconfig."+
-		"for example https://kubernetes.default.svc:443/foobar/api/v1/... here the suffix is foobar")
+			"The suffix is typically the last path in the server URL in kubeconfig. "+
+			"For example, https://kubernetes.default.svc:443/foobar/api/v1/... here the suffix is foobar")
 
 	fs.BoolVar(&k.DisableImpersonation, "disable-impersonation", k.DisableImpersonation,
 		"(Alpha) Disable the impersonation of authenticated requests. All "+
