@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 
@@ -14,6 +15,11 @@ import (
 )
 
 // MappingManager manages the JSON mapping file
+
+const (
+	labelSelectorPrefix = "pcd-kaapi.pf9.io/region="
+)
+
 type MappingManager struct {
 	mappings map[string]string
 	mutex    sync.RWMutex
@@ -103,7 +109,7 @@ func NewCustomNamespaceRoundTripper(suffixNSMappingFile string) (*CustomNamespac
 
 	mappingManager, err := NewMappingManager(suffixNSMappingFile)
 	if err != nil {
-		return nil, fmt.Errorf("Error initializing mapping manager:", err)
+		return nil, fmt.Errorf("error initializing mapping manager: %v", err)
 	}
 
 	return &CustomNamespaceRoundTripper{
@@ -129,6 +135,7 @@ func (c *CustomNamespaceRoundTripper) RoundTrip(req *http.Request) (*http.Respon
 	// Modify the namespace in the URL path
 
 	req.URL.Path = c.modifyNamespaceInPath(req.URL.Path)
+	c.addRegionLabelSelectorInPath(req)
 
 	// Forward the request to the next RoundTripper
 	return c.Transport.RoundTrip(req)
@@ -136,6 +143,7 @@ func (c *CustomNamespaceRoundTripper) RoundTrip(req *http.Request) (*http.Respon
 
 // modifyNamespaceInPath replaces the namespace in the URL path with the configured one
 func (c *CustomNamespaceRoundTripper) modifyNamespaceInPath(path string) string {
+
 	parts := strings.Split(path, "/")
 	suffix := ""
 	apiTokHit := false
@@ -156,6 +164,49 @@ func (c *CustomNamespaceRoundTripper) modifyNamespaceInPath(path string) string 
 		}
 	}
 	return joinPath(parts)
+}
+
+func (c *CustomNamespaceRoundTripper) addRegionLabelSelectorInPath(req *http.Request) {
+	parts := strings.Split(req.URL.Path, "/")
+
+	// Get region name
+	regionName := parts[1]
+
+	// remove region name from request
+	parts[1] = ""
+	req.URL.Path = joinPath(parts)
+
+	labelSelectorToBeAdded := []string{"byomachines", "byohosts", "hostedcontrolplanes", "openstackclusters", "machines", "machinedeployments", "clusters"}
+
+	// Add region label selector to the path only if the request comes for labelSelectorToBeAdded objects
+
+	/*
+		/apis/{kind}/{version}/namespaces/{namespace}/{object}
+	*/
+
+	for i, part := range parts {
+		if part == "namespaces" {
+			/*
+				if the request is for specific object with name, don't add label selector
+				eg: /apis/{kind}/{version}/namespaces/{namespace}/{object}/{object-name}
+				                              (i)       (i + 1)   (i + 2)   (i + 3)
+			*/
+			if len(parts) > i+3 && parts[i+3] != "" {
+				break
+			}
+
+			// check if object is in labelSelectorToBeAdded
+			if slices.Contains(labelSelectorToBeAdded, parts[i+2]) {
+				// add region label selector
+				query := req.URL.Query()
+
+				selector := labelSelectorPrefix + regionName
+				query.Set("labelSelector", selector)
+				req.URL.RawQuery = query.Encode()
+			}
+		}
+	}
+
 }
 
 func joinPath(parts []string) string {

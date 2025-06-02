@@ -67,7 +67,7 @@ type Proxy struct {
 	noAuthClientTransport http.RoundTripper
 
 	//pf9
-	namespaceTransport   *CustomNamespaceRoundTripper
+	namespaceTransport *CustomNamespaceRoundTripper
 
 	config *Config
 
