@@ -174,7 +174,6 @@ func (c *CustomNamespaceRoundTripper) addRegionLabelSelectorInPath(req *http.Req
 
 	// remove region name from request
 	parts[1] = ""
-	req.URL.Path = joinPath(parts)
 
 	labelSelectorToBeAdded := []string{"byomachines", "byohosts", "hostedcontrolplanes", "openstackclusters", "machines", "machinedeployments", "clusters"}
 
@@ -192,6 +191,10 @@ func (c *CustomNamespaceRoundTripper) addRegionLabelSelectorInPath(req *http.Req
 				                              (i)       (i + 1)   (i + 2)   (i + 3)
 			*/
 			if len(parts) > i+3 && parts[i+3] != "" {
+				// if the request is for all clusters in namespace, don't add label selector and remove all-clusters-in-pf9-tenant-namespace from path
+				if parts[i+2] == "clusters" && parts[i+3] == "all-clusters-in-pf9-tenant-namespace" {
+					parts[i+3] = ""
+				}
 				break
 			}
 
@@ -206,6 +209,7 @@ func (c *CustomNamespaceRoundTripper) addRegionLabelSelectorInPath(req *http.Req
 			}
 		}
 	}
+	req.URL.Path = joinPath(parts)
 
 }
 
