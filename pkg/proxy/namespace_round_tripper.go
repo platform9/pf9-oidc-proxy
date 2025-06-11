@@ -167,14 +167,13 @@ func (c *CustomNamespaceRoundTripper) modifyNamespaceInPath(path string) string 
 }
 
 func (c *CustomNamespaceRoundTripper) addRegionLabelSelectorInPath(req *http.Request) {
-	parts := strings.Split(req.URL.Path, "/")
+	partsOfPath := strings.Split(req.URL.Path, "/")
 
 	// Get region name
-	regionName := parts[1]
+	regionName := partsOfPath[1]
 
 	// remove region name from request
-	parts[1] = ""
-	req.URL.Path = joinPath(parts)
+	partsOfPath[1] = ""
 
 	labelSelectorToBeAdded := []string{"byomachines", "byohosts", "hostedcontrolplanes", "openstackclusters", "machines", "machinedeployments", "clusters"}
 
@@ -184,19 +183,23 @@ func (c *CustomNamespaceRoundTripper) addRegionLabelSelectorInPath(req *http.Req
 		/apis/{kind}/{version}/namespaces/{namespace}/{object}
 	*/
 
-	for i, part := range parts {
-		if part == "namespaces" {
+	for i, partOfPath := range partsOfPath {
+		if partOfPath == "namespaces" {
 			/*
 				if the request is for specific object with name, don't add label selector
 				eg: /apis/{kind}/{version}/namespaces/{namespace}/{object}/{object-name}
 				                              (i)       (i + 1)   (i + 2)   (i + 3)
 			*/
-			if len(parts) > i+3 && parts[i+3] != "" {
+			if len(partsOfPath) > i+3 && partsOfPath[i+3] != "" {
+				// if the request is for all clusters in namespace, don't add label selector and remove all-clusters-in-pf9-tenant-namespace from path
+				if partsOfPath[i+2] == "clusters" && partsOfPath[i+3] == "all-clusters-in-pf9-tenant-namespace" {
+					partsOfPath[i+3] = ""
+				}
 				break
 			}
 
 			// check if object is in labelSelectorToBeAdded
-			if slices.Contains(labelSelectorToBeAdded, parts[i+2]) {
+			if slices.Contains(labelSelectorToBeAdded, partsOfPath[i+2]) {
 				// add region label selector
 				query := req.URL.Query()
 
@@ -206,6 +209,7 @@ func (c *CustomNamespaceRoundTripper) addRegionLabelSelectorInPath(req *http.Req
 			}
 		}
 	}
+	req.URL.Path = joinPath(partsOfPath)
 
 }
 
