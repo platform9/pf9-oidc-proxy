@@ -99,9 +99,25 @@ e2e: depend ## run end to end tests
 build: generate ## build kube-oidc-proxy
 	CGO_ENABLED=0 go build -ldflags '-w $(shell hack/version-ldflags.sh)' -o ./bin/kube-oidc-proxy ./cmd/.
 
+build-multiarch-binaries: generate
+	GOARCH=amd64 GOOS=linux CGO_ENABLED=0 go build -ldflags '-w $(shell hack/version-ldflags.sh)' -o ./bin/kube-oidc-proxy-amd64 ./cmd/.
+	GOARCH=arm64 GOOS=linux CGO_ENABLED=0 go build -ldflags '-w $(shell hack/version-ldflags.sh)' -o ./bin/kube-oidc-proxy-arm64 ./cmd/.
+
 docker_build: generate test build ## build docker image
 	GOARCH=$(ARCH) GOOS=linux CGO_ENABLED=0 go build -ldflags '-w $(shell hack/version-ldflags.sh)' -o ./bin/kube-oidc-proxy  ./cmd/.
 	docker build -t kube-oidc-proxy .
+
+multiarch_docker_build: generate test build-multiarch-binaries ## build multi-arch docker image using buildx
+	@if ! docker buildx inspect multiarch-builder >/dev/null 2>&1; then \
+		docker buildx create --name multiarch-builder --use; \
+	else \
+		docker buildx use multiarch-builder; \
+	fi
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		--tag prajwalpf9/kube-oidc-proxy:latest \
+		--push \
+		.
 
 all: test build ## runs tests, build
 
