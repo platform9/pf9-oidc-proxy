@@ -115,7 +115,7 @@ multiarch_docker_build: generate test build-multiarch-binaries ## build multi-ar
 	fi
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
-		--tag prajwalpf9/kube-oidc-proxy:latest \
+		--tag kube-oidc-proxy:pcd-graviton \
 		--push \
 		.
 
