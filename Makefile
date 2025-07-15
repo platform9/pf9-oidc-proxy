@@ -95,6 +95,23 @@ docker_build: generate test build ## build docker image
 	GOARCH=$(ARCH) GOOS=linux CGO_ENABLED=0 go build -ldflags '-w $(shell hack/version-ldflags.sh)' -o ./bin/kube-oidc-proxy  ./cmd/.
 	docker build -t kube-oidc-proxy-pcd .
 
+build-multiarch-bin:
+	@echo "Building amd64 binary..."
+	GOARCH=amd64 GOOS=linux CGO_ENABLED=0 go build -ldflags '-w $(shell hack/version-ldflags.sh)' -o ./bin/kube-oidc-proxy-amd64 ./cmd/.
+	@echo "Building arm64 binary..."
+	GOARCH=arm64 GOOS=linux CGO_ENABLED=0 go build -ldflags '-w $(shell hack/version-ldflags.sh)' -o ./bin/kube-oidc-proxy-arm64 ./cmd/.
+
+docker_buildx_multiarch: build-multiarch-bin
+	@echo "Building multi-arch Docker image (linux/amd64, linux/arm64)..."
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		--build-arg BIN_NAME=kube-oidc-proxy-$(ARCH) \
+		--output type=docker \
+		--tag kube-oidc-proxy:pcd-graviton \
+		--file Dockerfile \
+		--push
+		.
+
 all: test build ## runs tests, build
 
 image: all docker_build ## runs tests, build and docker build
