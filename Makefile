@@ -106,7 +106,6 @@ docker_buildx_multiarch: build-multiarch-bin
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
 		--build-arg BIN_NAME=kube-oidc-proxy-$(ARCH) \
-		--output type=docker \
 		--tag kube-oidc-proxy:pcd-graviton \
 		--file Dockerfile \
 		--push
