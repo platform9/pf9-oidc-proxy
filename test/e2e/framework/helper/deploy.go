@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"strconv"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -498,8 +497,7 @@ func (h *Helper) deployApp(ns, name string, serviceType corev1.ServiceType, cont
 	}
 
 	if len(netIPs) > 0 {
-		appURL = fmt.Sprintf("https://%s:%s", netIPs[0],
-			strconv.FormatUint(uint64(svc.Spec.Ports[0].NodePort), 10))
+		appURL = fmt.Sprintf("https://%s:%d", netIPs[0], svc.Spec.Ports[0].NodePort)
 	}
 
 	_, err = h.KubeClient.CoreV1().Secrets(ns).Create(context.TODO(), sec, metav1.CreateOptions{})
