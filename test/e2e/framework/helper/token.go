@@ -37,7 +37,8 @@ func (h *Helper) NewValidRestConfig(issuerBundle, proxyBundle *util.KeyBundle,
 		BearerToken: signedToken,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs: certPool,
+				RootCAs:    certPool,
+				MinVersion: tls.VersionTLS12,
 			},
 		},
 	}, nil
