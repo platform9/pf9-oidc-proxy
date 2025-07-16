@@ -1,2 +1,7 @@
+
+* CVE-2024-45337 - golang.org/x/crypto (CRITICAL)
+* CVE-2025-22869 - golang.org/x/crypto (HIGH)
+=======
 * G115 - /home/runner/work/pf9-oidc-proxy/pf9-oidc-proxy/test/e2e/framework/helper/deploy.go:502 (HIGH) - integer overflow conversion int32 -> uint64
 * G402 - /home/runner/work/pf9-oidc-proxy/pf9-oidc-proxy/test/e2e/framework/helper/token.go:39-41 (HIGH) - TLS MinVersion too low.
+
