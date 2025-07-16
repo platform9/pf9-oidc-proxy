@@ -1,0 +1,6 @@
+pkg/proxy/handlers.go:1: : # github.com/jetstack/kube-oidc-proxy/pkg/proxy [github.com/jetstack/kube-oidc-proxy/pkg/proxy.test]
+pkg/proxy/proxy_test.go:35:19: undefined: mocks.MockToken
+pkg/proxy/proxy_test.go:275:21: undefined: mocks.NewMockToken (typecheck)
+// Copyright Jetstack Ltd. See LICENSE for details.
+1 issues:
+* typecheck: 1
