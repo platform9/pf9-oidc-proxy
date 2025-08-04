@@ -30,6 +30,12 @@ jobs:
     - name: Install dependencies
       run: make depend
 
+    - name: Install go-junit-report
+      run: go install github.com/jstemmer/go-junit-report@latest
+
+    - name: Add Go bin to PATH
+      run: echo "${HOME}/go/bin" >> $GITHUB_PATH
+
     - name: Run unit tests
       run: make test
 
