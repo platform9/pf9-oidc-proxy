@@ -11,14 +11,11 @@ linters:
     - ineffassign
     - unused
     - typecheck
-    - structcheck
-    - varcheck
     - revive
     - gofmt
     - goimports
     - gosimple
     - nakedret
-    - depguard
     - exportloopref
     - gocritic
     - misspell
@@ -75,5 +72,5 @@ issues:
         - errcheck
 
 output:
-  format: colored-line-number
-  sort-results: true
+  formats:
+    - colored-line-number
