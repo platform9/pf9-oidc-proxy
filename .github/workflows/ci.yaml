@@ -7,9 +7,37 @@ on:
     branches: [ private/pf9-oidc/harsh/unit-test ]
 
 jobs:
-  test:
+  lint:
+    name: Lint (golangci-lint)
     runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
 
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version-file: 'go.mod'
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      run: make depend
+
+    - name: Run golangci-lint
+      run: make go_lint
+
+  test:
+    name: Unit & E2E Tests
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout repo
       uses: actions/checkout@v3
@@ -37,9 +65,6 @@ jobs:
 
     - name: Add Go bin to PATH
       run: echo "${HOME}/go/bin" >> $GITHUB_PATH
-
-    - name: Run golangci-lint
-      run: make go_lint
 
     - name: Run unit tests
       run: make test

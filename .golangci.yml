@@ -56,16 +56,6 @@ linters-settings:
       - name: error-naming
       - name: time-naming
 
-  depguard:
-    list-type: blacklist
-    packages:
-      - github.com/some/deprecated/pkg
-    packages-with-error-message:
-      github.com/legacy/pkg: "Do not use legacy/pkg, use new/pkg instead"
-
-  misspell:
-    locale: US
-
 issues:
   exclude-use-default: false
   max-issues-per-linter: 50
