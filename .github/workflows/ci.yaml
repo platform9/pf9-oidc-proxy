@@ -1,4 +1,5 @@
 name: CI
+
 on:
   push:
     branches: [ private/pf9-oidc/harsh/unit-test ]
@@ -10,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout repo
+      uses: actions/checkout@v3
 
     - name: Set up Go
       uses: actions/setup-go@v3
@@ -35,6 +37,9 @@ jobs:
 
     - name: Add Go bin to PATH
       run: echo "${HOME}/go/bin" >> $GITHUB_PATH
+
+    - name: Run golangci-lint
+      run: make go_lint
 
     - name: Run unit tests
       run: make test
