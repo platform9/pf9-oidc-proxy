@@ -69,6 +69,26 @@ func TestModifyNamespaceInPath(t *testing.T) {
 			path:     "",
 			expected: "/",
 		},
+		{
+			name:     "tenant segment is 'api', should not modify",
+			path:     "/api/api/v1/namespaces/default/pods",
+			expected: "/api/api/v1/namespaces/default/pods",
+		},
+		{
+			name:     "malformed path with no leading slash",
+			path:     "tenant1/api/v1/namespaces/default/pods",
+			expected: "/api/v1/namespaces/namespace1/pods",
+		},
+		{
+			name:     "tenant exists but no 'namespaces' keyword",
+			path:     "/tenant1/api/v1/pods",
+			expected: "/api/v1/pods",
+		},
+		{
+			name:     "tenant not mapped, preserve original namespace",
+			path:     "/tenantX/api/v1/namespaces/kube-system/pods",
+			expected: "/api/v1/namespaces/kube-system/pods",
+		},
 	}
 
 	for _, tt := range tests {

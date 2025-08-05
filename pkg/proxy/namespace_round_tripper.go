@@ -153,7 +153,7 @@ func (c *CustomNamespaceRoundTripper) modifyNamespaceInPath(path string) string 
 		if part == "api" {
 			apiTokHit = true
 		}
-		if suffix == "" && apiTokHit == false {
+		if suffix == "" && !apiTokHit {
 			suffix = part
 			parts[i] = ""
 		}
@@ -222,7 +222,7 @@ func joinPath(parts []string) string {
 		}
 	}
 	fullPath := strings.Join(filteredPrarts, "/")
-	if false == strings.HasPrefix(fullPath, "/") {
+	if !strings.HasPrefix(fullPath, "/") {
 		fullPath = "/" + fullPath
 	}
 	return fullPath
