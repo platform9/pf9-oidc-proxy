@@ -73,4 +73,5 @@ issues:
 
 output:
   formats:
-    - colored-line-number
+    - format: colored-line-number
+  sort-results: true
