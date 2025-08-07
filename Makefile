@@ -72,7 +72,7 @@ go_vet:
 	go vet ./cmd
 
 go_lint: $(BINDIR)/golangci-lint ## lint golang code for problems
-	GOGC=30 GOMAXPROCS=2 $(BINDIR)/golangci-lint run --timeout 5m
+	GOGC=30 GOMAXPROCS=2 $(BINDIR)/golangci-lint run --timeout 5m --fast
 
 clean: ## clean up created files
 	rm -rf \

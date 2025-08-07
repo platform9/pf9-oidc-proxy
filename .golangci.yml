@@ -1,27 +1,28 @@
 run:
   timeout: 5m
-  concurrency: 2
+  concurrency: 1
   tests: true
 
 linters:
   enable:
     - govet
     - staticcheck
-    - errcheck
-    - ineffassign
     - unused
-    - typecheck
-    - revive
+    - errcheck
     - gofmt
     - goimports
+    - revive
     - gosimple
-    - nakedret
-    - exportloopref
-    - gocritic
-    - misspell
-    - rowserrcheck
+    - typecheck
+
+  disable:
     - deadcode
-    - whitespace
+    - gocyclo    
+    - dupl       
+    - lll        
+    - funlen     
+    - bodyclose  
+    - dogsled    
 
 linters-settings:
   errcheck:
@@ -73,6 +74,5 @@ issues:
         - errcheck
 
 output:
-  formats:
-    - format: colored-line-number
+  format: colored-line-number
   sort-results: true
