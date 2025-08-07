@@ -1,7 +1,7 @@
 run:
   timeout: 5m
+  concurrency: 2
   tests: true
-  concurrency: 1
 
 linters:
   enable:
@@ -20,6 +20,7 @@ linters:
     - gocritic
     - misspell
     - rowserrcheck
+    - deadcode
     - whitespace
 
 linters-settings:
