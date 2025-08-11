@@ -15,21 +15,6 @@ help:  ## display this help
 .PHONY: help build docker_build test depend verify all clean generate
 
 UNAME_S := $(shell uname -s)
-GOLANGCILINT_VERSION := 1.21.0
-ifeq ($(UNAME_S),Linux)
-	SHASUM := sha256sum -c
-	KUBECTL_URL := https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl
-	KUBECTL_HASH := bb16739fcad964c197752200ff89d89aad7b118cb1de5725dc53fe924c40e3f7
-	GOLANGCILINT_URL := https://github.com/golangci/golangci-lint/releases/download/v$(GOLANGCILINT_VERSION)/golangci-lint-$(GOLANGCILINT_VERSION)-linux-amd64.tar.gz
-	GOLANGCILINT_HASH := 2c861f8dc56b560474aa27cab0c075991628cc01af3451e27ac82f5d10d5106b
-endif
-ifeq ($(UNAME_S),Darwin)
-	SHASUM := shasum -a 256 -c
-	KUBECTL_URL := https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/darwin/amd64/kubectl
-	KUBECTL_HASH := 5eda86058a3db112821761b32afce3fdd2f6963ab580b1780a638ac323864eba
-	GOLANGCILINT_URL := https://github.com/golangci/golangci-lint/releases/download/v$(GOLANGCILINT_VERSION)/golangci-lint-$(GOLANGCILINT_VERSION)-darwin-amd64.tar.gz
-	GOLANGCILINT_HASH := 2b2713ec5007e67883aa501eebb81f22abfab0cf0909134ba90f60a066db3760
-endif
 
 $(BINDIR)/mockgen:
 	mkdir -p $(BINDIR)
@@ -37,24 +22,18 @@ $(BINDIR)/mockgen:
 
 $(BINDIR)/kubectl:
 	mkdir -p $(BINDIR)
-	curl --fail -sL -o $(BINDIR)/.kubectl $(KUBECTL_URL)
-	echo "$(KUBECTL_HASH)  $(BINDIR)/.kubectl" | $(SHASUM)
+ifeq ($(UNAME_S),Linux)
+	curl --fail -sL -o $(BINDIR)/.kubectl https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl
+	echo "bb16739fcad964c197752200ff89d89aad7b118cb1de5725dc53fe924c40e3f7  $(BINDIR)/.kubectl" | sha256sum -c
+endif
+ifeq ($(UNAME_S),Darwin)
+	curl --fail -sL -o $(BINDIR)/.kubectl https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/darwin/amd64/kubectl
+	echo "5eda86058a3db112821761b32afce3fdd2f6963ab580b1780a638ac323864eba  $(BINDIR)/.kubectl" | shasum -a 256 -c
+endif
 	chmod +x $(BINDIR)/.kubectl
 	mv $(BINDIR)/.kubectl $(BINDIR)/kubectl
 
-.PHONY: $(BINDIR)/golangci-lint
-$(BINDIR)/golangci-lint: $(BINDIR)/golangci-lint-$(GOLANGCILINT_VERSION)
-	@ln -fs golangci-lint-$(GOLANGCILINT_VERSION) $(BINDIR)/golangci-lint
-
-$(BINDIR)/golangci-lint-$(GOLANGCILINT_VERSION):
-	mkdir -p $(BINDIR) $(BINDIR)/.golangci-lint
-	curl --fail -sL -o $(BINDIR)/.golangci-lint.tar.gz $(GOLANGCILINT_URL)
-	echo "$(GOLANGCILINT_HASH)  $(BINDIR)/.golangci-lint.tar.gz" | $(SHASUM)
-	tar xvf $(BINDIR)/.golangci-lint.tar.gz -C $(BINDIR)/.golangci-lint
-	mv $(BINDIR)/.golangci-lint/*/golangci-lint $(BINDIR)/golangci-lint-$(GOLANGCILINT_VERSION)
-	rm -rf $(BINDIR)/.golangci-lint $(BINDIR)/.golangci-lint.tar.gz
-
-depend: $(BINDIR)/mockgen $(BINDIR)/kubectl $(BINDIR)/golangci-lint
+depend: $(BINDIR)/mockgen $(BINDIR)/kubectl
 
 verify_boilerplate:
 	$(HACK_DIR)/verify-boilerplate.sh
@@ -71,8 +50,12 @@ go_fmt:
 go_vet:
 	go vet ./cmd
 
-go_lint: $(BINDIR)/golangci-lint ## lint golang code for problems
-	$(BINDIR)/golangci-lint run --timeout 3m
+go_lint: ## lint golang code for problems
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		echo "golangci-lint is not installed. Install it via 'brew install golangci-lint' or see https://golangci-lint.run/usage/install/"; \
+		exit 1; \
+	fi
+	golangci-lint run --timeout 3m
 
 clean: ## clean up created files
 	rm -rf \
