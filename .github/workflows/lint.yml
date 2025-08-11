@@ -16,8 +16,14 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
-      - name: Run GolangCI-Lint
+      - name: Install dependencies
+        run: make depend
+
+      - name: Generate mocks
+        run: make generate
+
+      - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.0.1
-          args: --timeout 10m
+          args: --timeout=10m
