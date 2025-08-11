@@ -15,20 +15,20 @@ help:  ## display this help
 .PHONY: help build docker_build test depend verify all clean generate
 
 UNAME_S := $(shell uname -s)
-GOLANGCILINT_VERSION := 1.58.2
+GOLANGCILINT_VERSION := 1.21.0
 ifeq ($(UNAME_S),Linux)
 	SHASUM := sha256sum -c
 	KUBECTL_URL := https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl
 	KUBECTL_HASH := bb16739fcad964c197752200ff89d89aad7b118cb1de5725dc53fe924c40e3f7
 	GOLANGCILINT_URL := https://github.com/golangci/golangci-lint/releases/download/v$(GOLANGCILINT_VERSION)/golangci-lint-$(GOLANGCILINT_VERSION)-linux-amd64.tar.gz
-	GOLANGCILINT_HASH := 6236a423ea74cc0de61862da007a063f6187ad929bdb3fb54eb12cd689006a99
+	GOLANGCILINT_HASH := 2c861f8dc56b560474aa27cab0c075991628cc01af3451e27ac82f5d10d5106b
 endif
 ifeq ($(UNAME_S),Darwin)
 	SHASUM := shasum -a 256 -c
 	KUBECTL_URL := https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/darwin/amd64/kubectl
 	KUBECTL_HASH := 5eda86058a3db112821761b32afce3fdd2f6963ab580b1780a638ac323864eba
 	GOLANGCILINT_URL := https://github.com/golangci/golangci-lint/releases/download/v$(GOLANGCILINT_VERSION)/golangci-lint-$(GOLANGCILINT_VERSION)-darwin-amd64.tar.gz
-	GOLANGCILINT_HASH := 9d8c372fabff0917a0502c86381e9de291bef274b5ccc8e6b849fccb257cfefd
+	GOLANGCILINT_HASH := 2b2713ec5007e67883aa501eebb81f22abfab0cf0909134ba90f60a066db3760
 endif
 
 $(BINDIR)/mockgen:
@@ -72,7 +72,7 @@ go_vet:
 	go vet ./cmd
 
 go_lint: $(BINDIR)/golangci-lint ## lint golang code for problems
-	GOGC=30 GOMAXPROCS=2 $(BINDIR)/golangci-lint run --timeout 5m --fast
+	$(BINDIR)/golangci-lint run --timeout 3m
 
 clean: ## clean up created files
 	rm -rf \
