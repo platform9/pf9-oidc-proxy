@@ -4,6 +4,7 @@ package proxy
 import (
 	"bytes"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -871,7 +872,7 @@ func TestHandlers(t *testing.T) {
 
 			resp := w.Result()
 
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
 				t.FailNow()
