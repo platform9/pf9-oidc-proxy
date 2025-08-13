@@ -104,7 +104,9 @@ func (s *Sink) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	for _, event := range events.Items {
 		if err := json.NewEncoder(f).Encode(event); err != nil {

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"k8s.io/apiserver/pkg/authentication/user"
 	authuser "k8s.io/apiserver/pkg/authentication/user"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/client-go/transport"
@@ -94,7 +93,7 @@ func (p *Proxy) withImpersonateRequest(handler http.Handler) http.Handler {
 			return
 		}
 
-		var targetForContext user.Info
+		var targetForContext authuser.Info
 		targetForContext = nil
 
 		var remoteAddr string

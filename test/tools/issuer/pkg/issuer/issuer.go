@@ -60,7 +60,7 @@ func (i *Issuer) Run(bindAddress, listenPort string) (<-chan struct{}, error) {
 	go func() {
 		<-i.stopCh
 		if l != nil {
-			l.Close()
+			_ = l.Close()
 		}
 	}()
 
