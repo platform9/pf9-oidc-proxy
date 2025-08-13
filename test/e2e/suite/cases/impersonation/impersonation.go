@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	ginkgo "github.com/onsi/ginkgo"
+	gomega "github.com/onsi/gomega"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,9 +21,9 @@ import (
 var _ = framework.CasesDescribe("Impersonation", func() {
 	f := framework.NewDefaultFramework("impersonation")
 
-	It("should allow an authenticated user to impersonate an authorized user when az by rbac", func() {
+	ginkgo.It("should allow an authenticated user to impersonate an authorized user when az by rbac", func() {
 
-		By("Creating ClusterRole for user ok-to-impersonate@nodomain.dev to list Pods")
+		ginkgo.By("Creating ClusterRole for user ok-to-impersonate@nodomain.dev to list Pods")
 		rolePods, err := f.Helper().KubeClient.RbacV1().ClusterRoles().Create(context.TODO(), &rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "test-user-role-pods-impersonate-",
@@ -32,9 +32,9 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 				{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"get", "list"}},
 			},
 		}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Creating ClusterRoleBinding for user ok-to-impersonate@nodomain.dev")
+		ginkgo.By("Creating ClusterRoleBinding for user ok-to-impersonate@nodomain.dev")
 		_, err = f.Helper().KubeClient.RbacV1().ClusterRoleBindings().Create(context.TODO(),
 			&rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
@@ -43,9 +43,9 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 				Subjects: []rbacv1.Subject{{Name: "ok-to-impersonate@nodomain.dev", Kind: "User"}},
 				RoleRef:  rbacv1.RoleRef{Name: rolePods.Name, Kind: "ClusterRole"},
 			}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Impersonating a user, group, and extra")
+		ginkgo.By("Impersonating a user, group, and extra")
 		tryImpersonationClient(f, rest.ImpersonationConfig{
 			UserName: "ok-to-impersonate@nodomain.dev",
 			Groups: []string{
@@ -60,8 +60,8 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 
 	})
 
-	It("should error at proxy when impersonation enabled but a user is not specified", func() {
-		By("Impersonating as a group")
+	ginkgo.It("should error at proxy when impersonation enabled but a user is not specified", func() {
+		ginkgo.By("Impersonating as a group")
 		tryImpersonationClient(f, rest.ImpersonationConfig{
 			Groups: []string{
 				"group-1",
@@ -69,7 +69,7 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 			},
 		}, http.StatusInternalServerError, "no Impersonation-User header found for request")
 
-		By("Impersonating as a extra")
+		ginkgo.By("Impersonating as a extra")
 		tryImpersonationClient(f, rest.ImpersonationConfig{
 			Extra: map[string][]string{
 				"foo": {
@@ -82,13 +82,13 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 		}, http.StatusInternalServerError, "no Impersonation-User header found for request")
 	})
 
-	It("should return error from proxy when impersonation enabled and impersonation is not authorized by the cluster's RBAC", func() {
-		By("Impersonating as a user")
+	ginkgo.It("should return error from proxy when impersonation enabled and impersonation is not authorized by the cluster's RBAC", func() {
+		ginkgo.By("Impersonating as a user")
 		tryImpersonationClient(f, rest.ImpersonationConfig{
 			UserName: "foo@example.com",
 		}, http.StatusForbidden, "user@example.com is not allowed to impersonate user 'foo@example.com'")
 
-		By("Impersonating as a user, group")
+		ginkgo.By("Impersonating as a user, group")
 		tryImpersonationClient(f, rest.ImpersonationConfig{
 			UserName: "ok-to-impersonate@nodomain.dev",
 			Groups: []string{
@@ -96,7 +96,7 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 			},
 		}, http.StatusForbidden, "user@example.com is not allowed to impersonate group 'group-1'")
 
-		By("Impersonating as a user, extra")
+		ginkgo.By("Impersonating as a user, extra")
 		tryImpersonationClient(f, rest.ImpersonationConfig{
 			UserName: "ok-to-impersonate@nodomain.dev",
 			Extra: map[string][]string{
@@ -108,11 +108,11 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 
 	})
 
-	It("should not error at proxy when impersonation is disabled and impersonation is attempted on a request", func() {
-		By("Enabling the disabling of impersonation")
+	ginkgo.It("should not error at proxy when impersonation is disabled and impersonation is attempted on a request", func() {
+		ginkgo.By("Enabling the disabling of impersonation")
 		f.DeployProxyWith(nil, "--disable-impersonation")
 
-		By("Creating ClusterRole for system:anonymous to impersonate")
+		ginkgo.By("Creating ClusterRole for system:anonymous to impersonate")
 		roleImpersonate, err := f.Helper().KubeClient.RbacV1().ClusterRoles().Create(context.TODO(), &rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "test-user-role-impersonate-",
@@ -121,9 +121,9 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 				{APIGroups: []string{""}, Resources: []string{"users"}, Verbs: []string{"impersonate"}},
 			},
 		}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Creating Role for user foo to list Pods")
+		ginkgo.By("Creating Role for user foo to list Pods")
 		rolePods, err := f.Helper().KubeClient.RbacV1().Roles(f.Namespace.Name).Create(context.TODO(), &rbacv1.Role{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "test-user-role-pods-",
@@ -132,9 +132,9 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 				{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"get", "list"}},
 			},
 		}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Creating ClusterRoleBinding for user system:anonymous")
+		ginkgo.By("Creating ClusterRoleBinding for user system:anonymous")
 		rolebindingImpersonate, err := f.Helper().KubeClient.RbacV1().ClusterRoleBindings().Create(context.TODO(),
 			&rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
@@ -143,9 +143,9 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 				Subjects: []rbacv1.Subject{{Name: "system:anonymous", Kind: "User"}},
 				RoleRef:  rbacv1.RoleRef{Name: roleImpersonate.Name, Kind: "ClusterRole"},
 			}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Creating RoleBinding for user foo@example.com")
+		ginkgo.By("Creating RoleBinding for user foo@example.com")
 		rolebindingPods, err := f.Helper().KubeClient.RbacV1().RoleBindings(f.Namespace.Name).Create(context.TODO(),
 			&rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
@@ -154,7 +154,7 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 				Subjects: []rbacv1.Subject{{Name: "foo@example.com", Kind: "User"}},
 				RoleRef:  rbacv1.RoleRef{Name: rolePods.Name, Kind: "Role"},
 			}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		// build client with impersonation
 		config := f.NewProxyRestConfig()
@@ -162,28 +162,28 @@ var _ = framework.CasesDescribe("Impersonation", func() {
 			UserName: "foo@example.com",
 		}
 		client, err := kubernetes.NewForConfig(config)
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		// Should not error since we have authorized system:anonymous to
 		// impersonate and foo@example.com to list pods
 		_, err = client.CoreV1().Pods(f.Namespace.Name).List(context.TODO(), metav1.ListOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Deleting RoleBinding for user foo@example.com")
+		ginkgo.By("Deleting RoleBinding for user foo@example.com")
 		err = f.Helper().KubeClient.RbacV1().RoleBindings(f.Namespace.Name).Delete(context.TODO(), rolebindingPods.Name, metav1.DeleteOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Deleting Role for list Pods")
+		ginkgo.By("Deleting Role for list Pods")
 		err = f.Helper().KubeClient.RbacV1().Roles(f.Namespace.Name).Delete(context.TODO(), rolePods.Name, metav1.DeleteOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Deleting ClusterRoleBinding for user system:anonymous")
+		ginkgo.By("Deleting ClusterRoleBinding for user system:anonymous")
 		err = f.Helper().KubeClient.RbacV1().ClusterRoleBindings().Delete(context.TODO(), rolebindingImpersonate.Name, metav1.DeleteOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Deleting ClusterRole for Impersonate")
+		ginkgo.By("Deleting ClusterRole for Impersonate")
 		err = f.Helper().KubeClient.RbacV1().ClusterRoles().Delete(context.TODO(), roleImpersonate.Name, metav1.DeleteOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
 })
 
@@ -192,7 +192,7 @@ func tryImpersonationClient(f *framework.Framework, impConfig rest.Impersonation
 	config := f.NewProxyRestConfig()
 	config.Impersonate = impConfig
 	client, err := kubernetes.NewForConfig(config)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	var resp string
 	var respCode int
@@ -201,7 +201,7 @@ func tryImpersonationClient(f *framework.Framework, impConfig rest.Impersonation
 	if err != nil {
 		kErr, ok := err.(*k8sErrors.StatusError)
 		if !ok {
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 		respCode = int(kErr.ErrStatus.Code)
 		fmt.Printf("http status code %d\n", respCode)
@@ -223,16 +223,16 @@ func tryImpersonationClient(f *framework.Framework, impConfig rest.Impersonation
 	//if int(kErr.Status().Code) != http.StatusForbidden ||
 
 	if respCode != expectedCode {
-		Expect(fmt.Errorf("expected status code=%d, got=%d resp=%s", expectedCode, respCode, resp)).NotTo(HaveOccurred())
+		gomega.Expect(fmt.Errorf("expected status code=%d, got=%d resp=%s", expectedCode, respCode, resp)).NotTo(gomega.HaveOccurred())
 	}
 
 	if resp != expRespBody {
-		Expect(fmt.Errorf("expected response=%s, got=%s", expRespBody, resp)).NotTo(HaveOccurred())
+		gomega.Expect(fmt.Errorf("expected response=%s, got=%s", expRespBody, resp)).NotTo(gomega.HaveOccurred())
 	}
 
 	/*if int(kErr.Status().Code) != expectedCode ||
 		resp != expRespBody {
-		Expect(fmt.Errorf("expected status code %d with body \"%s\", got code=%d, body=\"%s\"",
-			http.StatusForbidden, expRespBody, int(kErr.Status().Code), resp)).NotTo(HaveOccurred())
+		gomega.Expect(fmt.Errorf("expected status code %d with body \"%s\", got code=%d, body=\"%s\"",
+			http.StatusForbidden, expRespBody, int(kErr.Status().Code), resp)).NotTo(gomega.HaveOccurred())
 	}*/
 }
