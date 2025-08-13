@@ -4,7 +4,7 @@ package proxy
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"slices"
@@ -52,7 +52,7 @@ func (m *MappingManager) loadMappings(filePath string) error {
 		_ = file.Close()
 	}()
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return err
 	}
