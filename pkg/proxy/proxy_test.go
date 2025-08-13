@@ -4,7 +4,6 @@ package proxy
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
