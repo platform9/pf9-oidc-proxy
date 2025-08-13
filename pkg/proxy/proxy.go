@@ -5,7 +5,7 @@ import (
 	ctx "context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -82,7 +82,7 @@ type CAFromFile struct {
 }
 
 func (caFromFile CAFromFile) CurrentCABundleContent() []byte {
-	res, _ := ioutil.ReadFile(caFromFile.CAFile)
+	res, _ := os.ReadFile(caFromFile.CAFile)
 	return res
 }
 
