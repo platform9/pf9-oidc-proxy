@@ -64,7 +64,7 @@ func (s *Sink) Run(bindAddress, listenPort string) (<-chan struct{}, error) {
 	go func() {
 		<-s.stopCh
 		if l != nil {
-			l.Close()
+			_ = l.Close()
 		}
 	}()
 

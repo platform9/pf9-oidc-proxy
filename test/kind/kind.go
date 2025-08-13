@@ -218,8 +218,11 @@ func (k *Kind) errDestroy(err error) error {
 func (k *Kind) waitForNodesReady() error {
 	log.Infof("kind: waiting for all nodes to become ready...")
 
-	return wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
-		nodes, err := k.client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	return wait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(ctx context.Context) (bool, error) {
+		nodes, err := k.client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -245,8 +248,7 @@ func (k *Kind) waitForNodesReady() error {
 		}
 
 		if len(notReady) > 0 {
-			log.Infof("kind: nodes not ready: %s",
-				strings.Join(notReady, ", "))
+			log.Infof("kind: nodes not ready: %s", strings.Join(notReady, ", "))
 			return false, nil
 		}
 
@@ -260,8 +262,11 @@ func (k *Kind) waitForCoreDNSReady() error {
 }
 
 func (k *Kind) waitForPodsReady(namespace, labelSelector string) error {
-	return wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
-		pods, err := k.client.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	return wait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(ctx context.Context) (bool, error) {
+		pods, err := k.client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labelSelector,
 		})
 		if err != nil {
@@ -269,22 +274,19 @@ func (k *Kind) waitForPodsReady(namespace, labelSelector string) error {
 		}
 
 		if len(pods.Items) == 0 {
-			log.Warnf("kind: no pods found in namespace %q with selector %q - checking again...",
-				namespace, labelSelector)
+			log.Warnf("kind: no pods found in namespace %q with selector %q - checking again...", namespace, labelSelector)
 			return false, nil
 		}
 
 		var notReady []string
 		for _, pod := range pods.Items {
 			if pod.Status.Phase != corev1.PodRunning {
-				notReady = append(notReady, fmt.Sprintf("%s:%s (%s)",
-					pod.Namespace, pod.Name, pod.Status.Phase))
+				notReady = append(notReady, fmt.Sprintf("%s:%s (%s)", pod.Namespace, pod.Name, pod.Status.Phase))
 			}
 		}
 
 		if len(notReady) > 0 {
-			log.Infof("kind: pods not ready: %s",
-				strings.Join(notReady, ", "))
+			log.Infof("kind: pods not ready: %s", strings.Join(notReady, ", "))
 			return false, nil
 		}
 
