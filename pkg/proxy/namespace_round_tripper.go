@@ -48,7 +48,9 @@ func (m *MappingManager) loadMappings(filePath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
@@ -70,7 +72,9 @@ func (m *MappingManager) watchFile(filePath string) {
 		fmt.Println("Failed to create file watcher:", err)
 		return
 	}
-	defer watcher.Close()
+	defer func() {
+		_ = watcher.Close()
+	}()
 
 	err = watcher.Add(filePath)
 	if err != nil {
@@ -86,7 +90,9 @@ func (m *MappingManager) watchFile(filePath string) {
 			}
 			if event.Op&fsnotify.Write == fsnotify.Write {
 				fmt.Println("Mapping file updated, reloading...")
-				m.loadMappings(filePath)
+				if err := m.loadMappings(filePath); err != nil {
+					fmt.Println("failed to reload mappings:", err)
+				}
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {

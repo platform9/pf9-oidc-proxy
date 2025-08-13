@@ -36,7 +36,9 @@ func NewTLSSelfSignedCertKey(host string, netIPs []net.IP, dnsNames []string) (*
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(dir)
+	defer func() {
+		_ = os.RemoveAll(dir)
+	}()
 
 	certPath := filepath.Join(dir, fmt.Sprintf("%s-ca.pem", prefix))
 	keyPath := filepath.Join(dir, fmt.Sprintf("%s-key.pem", prefix))

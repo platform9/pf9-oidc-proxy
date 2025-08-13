@@ -94,7 +94,9 @@ func (k *Kind) loadImage(binPath, mainPath, image, dockerfilePath string) error 
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	imageArchive := filepath.Join(tmpDir, fmt.Sprintf("%s-e2e.tar", image))
 	log.Infof("kind: saving image to archive %q", imageArchive)

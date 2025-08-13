@@ -128,6 +128,9 @@ func DeleteCluster(name string) error {
 	provider := cluster.NewProvider()
 
 	f, err := os.CreateTemp("", name)
+	if err != nil {
+		return err
+	}
 
 	kubeconfig, err := provider.KubeConfig(clusterName, false)
 	if err != nil {
@@ -138,7 +141,9 @@ func DeleteCluster(name string) error {
 		return err
 	}
 
-	f.Close()
+	if err := f.Close(); err != nil {
+		return err
+	}
 
 	return provider.Delete(clusterName, f.Name())
 }
