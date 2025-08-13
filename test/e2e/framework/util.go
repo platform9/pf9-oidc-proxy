@@ -37,29 +37,19 @@ func (f *Framework) DeleteKubeNamespace(namespace string) error {
 // to not exist for up to 2 minutes.
 func (f *Framework) WaitForKubeNamespaceNotExist(namespace string) error {
 	ctx := context.TODO()
-
 	return wait.PollUntilContextTimeout(
 		ctx,
-		2*time.Second,          // poll interval
-		2*time.Minute,          // timeout
-		true,                   // run immediately
-		func(ctx context.Context) (bool, error) {
-			_, err := f.KubeClientSet.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
-			if apierrors.IsNotFound(err) {
-				return true, nil
-			}
-			if err != nil {
-				return false, err
-			}
-			return false, nil
-		},
+		2*time.Second,
+		2*time.Minute,
+		true,
+		namespaceNotExist(f.KubeClientSet, namespace),
 	)
 }
 
 
-func namespaceNotExist(c kubernetes.Interface, namespace string) wait.ConditionFunc {
-	return func() (bool, error) {
-		_, err := c.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
+func namespaceNotExist(c kubernetes.Interface, namespace string) wait.ConditionWithContextFunc {
+	return func(ctx context.Context) (bool, error) {
+		_, err := c.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
 			return true, nil
 		}
