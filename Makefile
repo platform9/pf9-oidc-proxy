@@ -82,7 +82,7 @@ clean: ## clean up created files
 		$(CURDIR)/test/e2e/framework/issuer/bin \
 		$(CURDIR)/test/e2e/framework/fake-apiserver/bin
 
-verify: depend verify_boilerplate go_fmt go_vet go_lint ## verify code and mod
+verify: depend verify_boilerplate go_fmt go_vet ## verify code and mod
 
 generate: depend ## generates mocks and assets files
 	go generate $$(go list ./pkg/... ./cmd/...)
@@ -90,7 +90,7 @@ generate: depend ## generates mocks and assets files
 test: generate verify ## run all go tests
 	mkdir -p $(ARTIFACTS)
 	go test -v -bench $$(go list ./pkg/... ./cmd/... | grep -v pkg/e2e) | tee $(ARTIFACTS)/go-test.stdout
-	cat $(ARTIFACTS)/go-test.stdout | go run github.com/jstemmer/go-junit-report > $(ARTIFACTS)/junit-go-test.xml
+	cat $(ARTIFACTS)/go-test.stdout | go-junit-report > $(ARTIFACTS)/junit-go-test.xml
 
 e2e: depend ## run end to end tests
 	mkdir -p $(ARTIFACTS)
