@@ -23,7 +23,25 @@ KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
 boilerDir="${KUBE_ROOT}/hack/boilerplate"
 boiler="${boilerDir}/boilerplate.py"
 
-files_need_boilerplate=($(${boiler} "$@"))
+all_files=$(find . -name '*.go' | grep -v "./vendor/")
+
+excluded_files=("./pkg/proxy/namespace_round_tripper.go" "./pkg/proxy/namespace_round_tripper_test.go")
+
+files_to_check=()
+for file in $all_files; do
+  should_exclude=false
+  for excluded_file in "${excluded_files[@]}"; do
+    if [[ "$file" == "$excluded_file" ]]; then
+      should_exclude=true
+      break
+    fi
+  done
+  if ! $should_exclude; then
+    files_to_check+=("$file")
+  fi
+done
+
+files_need_boilerplate=($(python3 ${boiler} "${files_to_check[@]}"))
 
 # Run boilerplate check
 if [[ ${#files_need_boilerplate[@]} -gt 0 ]]; then

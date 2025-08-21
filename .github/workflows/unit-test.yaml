@@ -1,0 +1,27 @@
+name: unit tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  run:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
+
+    - name: Install dependencies
+      run: make depend
+
+    - name: Install go-junit-report
+      run: go install github.com/jstemmer/go-junit-report@latest
+
+    - name: Run unit tests
+      run: make test

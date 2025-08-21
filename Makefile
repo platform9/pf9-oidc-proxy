@@ -75,7 +75,7 @@ generate: depend ## generates mocks and assets files
 test: generate verify ## run all go tests
 	mkdir -p $(ARTIFACTS)
 	go test -v -bench $$(go list ./pkg/... ./cmd/... | grep -v pkg/e2e) | tee $(ARTIFACTS)/go-test.stdout
-	cat $(ARTIFACTS)/go-test.stdout | go run github.com/jstemmer/go-junit-report > $(ARTIFACTS)/junit-go-test.xml
+	cat $(ARTIFACTS)/go-test.stdout | go-junit-report > $(ARTIFACTS)/junit-go-test.xml
 
 e2e: depend ## run end to end tests
 	mkdir -p $(ARTIFACTS)
