@@ -1,8 +1,14 @@
 name: unit tests
 
 on:
-  push:
   pull_request:
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+  push:
+    branches:
+      - pf9-oidc
 
 jobs:
   run:
