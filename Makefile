@@ -4,6 +4,8 @@ HACK_DIR  ?= hack
 PATH      := $(BINDIR):$(PATH)
 ARTIFACTS ?= artifacts
 ARCH      ?= amd64
+GOLANGCI_LINT_VERSION ?= v2.1.6
+GOLANGCI_LINT := $(BINDIR)/golangci-lint
 
 SHELL = /bin/bash -o pipefail
 
@@ -33,7 +35,11 @@ endif
 	chmod +x $(BINDIR)/.kubectl
 	mv $(BINDIR)/.kubectl $(BINDIR)/kubectl
 
-depend: $(BINDIR)/mockgen $(BINDIR)/kubectl
+$(GOLANGCI_LINT):
+	@echo ">>> Installing golangci-lint $(GOLANGCI_LINT_VERSION) to $(BINDIR)"
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINDIR) $(GOLANGCI_LINT_VERSION)
+
+depend: $(BINDIR)/mockgen $(BINDIR)/kubectl $(GOLANGCI_LINT)
 
 verify_boilerplate:
 	$(HACK_DIR)/verify-boilerplate.sh
@@ -50,12 +56,8 @@ go_fmt:
 go_vet:
 	go vet ./cmd
 
-go_lint: ## lint golang code for problems
-	@if ! command -v golangci-lint >/dev/null 2>&1; then \
-		echo "golangci-lint is not installed. Install it via 'brew install golangci-lint' or see https://golangci-lint.run/usage/install/"; \
-		exit 1; \
-	fi
-	golangci-lint run --timeout 3m
+lint: $(GOLANGCI_LINT)
+	$(GOLANGCI_LINT) run --timeout 3m
 
 clean: ## clean up created files
 	rm -rf \
@@ -65,7 +67,7 @@ clean: ## clean up created files
 		$(CURDIR)/test/e2e/framework/issuer/bin \
 		$(CURDIR)/test/e2e/framework/fake-apiserver/bin
 
-verify: depend verify_boilerplate go_fmt go_vet go_lint ## verify code and mod
+verify: depend verify_boilerplate go_fmt go_vet lint ## verify code and mod
 
 generate: depend ## generates mocks and assets files
 	go generate $$(go list ./pkg/... ./cmd/...)

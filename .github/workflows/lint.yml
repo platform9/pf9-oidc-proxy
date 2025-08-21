@@ -1,8 +1,14 @@
 name: Lint
 
 on:
-  push:
   pull_request:
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+  push:
+    branches:
+      - pf9-oidc
 
 jobs:
   golangci-lint:
@@ -16,14 +22,5 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
-      - name: Install dependencies
-        run: make depend
-
-      - name: Generate mocks
-        run: make generate
-
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v7
-        with:
-          version: v2.0.1
-          args: --timeout=10m
+        run: make lint
