@@ -7,7 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"net"
 	"net/http"
 
@@ -24,7 +24,7 @@ type Issuer struct {
 }
 
 func New(issuerURL, keyFile, certFile string, stopCh <-chan struct{}) (*Issuer, error) {
-	b, err := ioutil.ReadFile(keyFile)
+	b, err := os.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (i *Issuer) Run(bindAddress, listenPort string) (<-chan struct{}, error) {
 	go func() {
 		<-i.stopCh
 		if l != nil {
-			l.Close()
+			_ = l.Close()
 		}
 	}()
 

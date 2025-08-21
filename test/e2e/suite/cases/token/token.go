@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	ginkgo "github.com/onsi/ginkgo"
+	gomega "github.com/onsi/gomega"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,35 +21,35 @@ import (
 var _ = framework.CasesDescribe("Token", func() {
 	f := framework.NewDefaultFramework("token")
 
-	It("should error when tokens are wrong for the issuer", func() {
-		By("No token should error")
+	ginkgo.It("should error when tokens are wrong for the issuer", func() {
+		ginkgo.By("No token should error")
 		expectProxyUnauthorized(f, nil)
 
-		By("Bad token should error")
+		ginkgo.By("Bad token should error")
 		expectProxyUnauthorized(f, []byte("bad token"))
 
-		By("Wrong issuer should error")
+		ginkgo.By("Wrong issuer should error")
 		badURL, err := url.Parse("incorrect-issuer.io")
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		expectProxyUnauthorized(f, f.Helper().NewTokenPayload(
 			badURL, f.ClientID(), time.Now().Add(time.Minute)))
 
-		By("Wrong audience should error")
+		ginkgo.By("Wrong audience should error")
 		expectProxyUnauthorized(f, f.Helper().NewTokenPayload(
 			f.IssuerURL(), "wrong-aud", time.Now().Add(time.Minute)))
 
-		By("Token expires now")
+		ginkgo.By("Token expires now")
 		expectProxyUnauthorized(f, f.Helper().NewTokenPayload(
 			f.IssuerURL(), f.ClientID(), time.Now()))
 
-		By("Valid token should return Kubernetes forbidden")
+		ginkgo.By("Valid token should return Kubernetes forbidden")
 		client := f.NewProxyClient()
 
 		// If does not return with Kubernetes forbidden error then error
 		_, err = client.CoreV1().Pods(f.Namespace.Name).List(context.TODO(), metav1.ListOptions{})
 		if !k8sErrors.IsForbidden(err) {
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 	})
 })
@@ -57,7 +57,7 @@ var _ = framework.CasesDescribe("Token", func() {
 func expectProxyUnauthorized(f *framework.Framework, tokenPayload []byte) {
 	// Build client using given token payload
 	signedToken, err := f.Helper().SignToken(f.IssuerKeyBundle(), tokenPayload)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	proxyConfig := f.NewProxyRestConfig()
 	requester := f.Helper().NewRequester(proxyConfig.Transport, signedToken)
@@ -68,12 +68,12 @@ func expectProxyUnauthorized(f *framework.Framework, tokenPayload []byte) {
 
 	body, resp, err := requester.Get(target)
 	body = bytes.TrimSpace(body)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	// Check body and status code the token was rejected
 	if resp.StatusCode != http.StatusUnauthorized ||
 		!bytes.Equal(body, []byte("Unauthorized")) {
-		Expect(fmt.Errorf("expected status code %d with body Unauthorized, got= %d %q",
-			http.StatusUnauthorized, resp.StatusCode, body)).NotTo(HaveOccurred())
+		gomega.Expect(fmt.Errorf("expected status code %d with body Unauthorized, got= %d %q",
+			http.StatusUnauthorized, resp.StatusCode, body)).NotTo(gomega.HaveOccurred())
 	}
 }

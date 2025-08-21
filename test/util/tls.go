@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -32,21 +31,23 @@ func NewTLSSelfSignedCertKey(host string, netIPs []net.IP, dnsNames []string) (*
 		return nil, err
 	}
 
-	dir, err := ioutil.TempDir(os.TempDir(), prefix)
+	dir, err := os.MkdirTemp(os.TempDir(), prefix)
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(dir)
+	defer func() {
+		_ = os.RemoveAll(dir)
+	}()
 
 	certPath := filepath.Join(dir, fmt.Sprintf("%s-ca.pem", prefix))
 	keyPath := filepath.Join(dir, fmt.Sprintf("%s-key.pem", prefix))
 
-	err = ioutil.WriteFile(certPath, certBytes, 0600)
+	err = os.WriteFile(certPath, certBytes, 0600)
 	if err != nil {
 		return nil, err
 	}
 
-	err = ioutil.WriteFile(keyPath, keyBytes, 0600)
+	err = os.WriteFile(keyPath, keyBytes, 0600)
 	if err != nil {
 		return nil, err
 	}

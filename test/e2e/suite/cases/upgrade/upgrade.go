@@ -5,14 +5,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	ginkgo "github.com/onsi/ginkgo"
+	gomega "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,8 +34,8 @@ var _ = framework.CasesDescribe("Upgrade", func() {
 	f := framework.NewDefaultFramework("upgrade")
 
 	var pod *corev1.Pod
-	JustBeforeEach(func() {
-		By("Deploying echo server to exec to")
+	ginkgo.JustBeforeEach(func() {
+		ginkgo.By("Deploying echo server to exec to")
 
 		var err error
 		pod, err = f.Helper().KubeClient.CoreV1().Pods(f.Namespace.Name).Create(context.TODO(), &corev1.Pod{
@@ -52,12 +52,12 @@ var _ = framework.CasesDescribe("Upgrade", func() {
 				},
 			},
 		}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		err = f.Helper().WaitForPodReady(f.Namespace.Name, pod.Name, time.Second*30)
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Creating Role")
+		ginkgo.By("Creating Role")
 		_, err = f.Helper().KubeClient.RbacV1().Roles(f.Namespace.Name).Create(context.TODO(), &rbacv1.Role{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "e2e-test-exec",
@@ -74,9 +74,9 @@ var _ = framework.CasesDescribe("Upgrade", func() {
 				},
 			},
 		}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Creating RoleBinding")
+		ginkgo.By("Creating RoleBinding")
 		_, err = f.Helper().KubeClient.RbacV1().RoleBindings(f.Namespace.Name).Create(context.TODO(),
 			&rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
@@ -93,14 +93,14 @@ var _ = framework.CasesDescribe("Upgrade", func() {
 					Kind: "Role",
 				},
 			}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
 
-	It("should be able to exec into pod through the proxy", func() {
+	ginkgo.It("should be able to exec into pod through the proxy", func() {
 		restConfig := newRestConfig(f)
 
 		restClient, err := rest.RESTClientFor(restConfig)
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		// curl echo server from within pod
 		req := restClient.Post().
@@ -120,7 +120,7 @@ var _ = framework.CasesDescribe("Upgrade", func() {
 			}, scheme.ParameterCodec)
 
 		exec, err := remotecommand.NewSPDYExecutor(restConfig, "POST", req.URL())
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		execOut := &bytes.Buffer{}
 		execErr := &bytes.Buffer{}
@@ -131,39 +131,39 @@ var _ = framework.CasesDescribe("Upgrade", func() {
 			Tty:    false,
 		}
 
-		By("Running exec into pod and runing curl on local host")
-		err = exec.Stream(sopt)
-		Expect(err).NotTo(HaveOccurred())
+		ginkgo.By("Running exec into pod and runing curl on local host")
+		err = exec.StreamWithContext(context.TODO(), sopt)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		// should have no stderr output
 		if execErr.String() != "" {
 			err := fmt.Errorf("got curl error: %s", execErr.String())
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 
-		By(fmt.Sprintf("exec output %s/%s: %s", pod.Namespace, pod.Name, execOut.String()))
+		ginkgo.By(fmt.Sprintf("exec output %s/%s: %s", pod.Namespace, pod.Name, execOut.String()))
 
 		// should have correct stdout output from echo server
 		if !strings.HasSuffix(execOut.String(), "BODY:\nhello world") {
 			err := fmt.Errorf("got unexpected echoserver response: exp=...hello world got=%s",
 				execOut.String())
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 	})
 
-	It("it should be able to sustain a port forward to send traffic", func() {
-		By("Creating a port forward")
+	ginkgo.It("it should be able to sustain a port forward to send traffic", func() {
+		ginkgo.By("Creating a port forward")
 
 		portOut := &bytes.Buffer{}
 		portErr := &bytes.Buffer{}
 
 		freePort, err := util.FreePort()
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		restConfig := newRestConfig(f)
 
 		restClient, err := rest.RESTClientFor(restConfig)
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		req := restClient.Post().
 			Resource("pods").
@@ -189,7 +189,7 @@ var _ = framework.CasesDescribe("Upgrade", func() {
 			// give a chance to establish a connection
 			time.Sleep(time.Second * 2)
 
-			By("Attempting to curl through port forward")
+			ginkgo.By("Attempting to curl through port forward")
 
 			portInR := bytes.NewReader([]byte("hello world"))
 
@@ -208,7 +208,7 @@ var _ = framework.CasesDescribe("Upgrade", func() {
 				return
 			}
 
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				errCh <- fmt.Errorf("failed to read body: %s", err)
 				return
@@ -222,16 +222,16 @@ var _ = framework.CasesDescribe("Upgrade", func() {
 			}
 		}()
 
-		By("Running port forward")
+		ginkgo.By("Running port forward")
 		if err := forwardPorts("POST", req.URL(), pfopts); err != nil {
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 
 		select {
 		case <-pfopts.stopCh:
 			return
 		case err := <-errCh:
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 	})
 })
@@ -261,7 +261,7 @@ func forwardPorts(method string, url *url.URL, opts *portForwardOptions) error {
 func newRestConfig(f *framework.Framework) *rest.Config {
 	payload := f.Helper().NewTokenPayload(f.IssuerURL(), f.ClientID(), time.Now().Add(time.Minute))
 	signedToken, err := f.Helper().SignToken(f.IssuerKeyBundle(), payload)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return &rest.Config{
 		Host: f.ProxyURL().Host,

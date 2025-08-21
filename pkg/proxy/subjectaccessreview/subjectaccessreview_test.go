@@ -308,7 +308,7 @@ func runTest(t *testing.T, name string, test testT) {
 
 	//check if impersonation was found when expected
 
-	headersFound := !(err == nil && target == nil)
+	headersFound := (err != nil) || (target != nil)
 
 	if test.expImpersonationHeaders != headersFound {
 		t.Errorf("unexpected result when checking if impersonation headers were present, exp=%t got=%t", test.expImpersonationHeaders, (err == nil && target == nil))

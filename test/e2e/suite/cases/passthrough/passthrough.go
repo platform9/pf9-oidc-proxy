@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	ginkgo "github.com/onsi/ginkgo"
+	gomega "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,8 +22,8 @@ var _ = framework.CasesDescribe("Passthrough", func() {
 
 	var saToken string
 
-	JustBeforeEach(func() {
-		By("Creating List Pods Role")
+	ginkgo.JustBeforeEach(func() {
+		ginkgo.By("Creating List Pods Role")
 		_, err := f.Helper().KubeClient.RbacV1().Roles(f.Namespace.Name).Create(context.TODO(),
 			&rbacv1.Role{
 				ObjectMeta: metav1.ObjectMeta{
@@ -37,10 +37,10 @@ var _ = framework.CasesDescribe("Passthrough", func() {
 					},
 				},
 			}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		// Create bindings for both the OIDC user and default ServiceAccount
-		By("Creating List Pods RoleBinding")
+		ginkgo.By("Creating List Pods RoleBinding")
 		_, err = f.Helper().KubeClient.RbacV1().RoleBindings(f.Namespace.Name).Create(context.TODO(),
 			&rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
@@ -53,53 +53,53 @@ var _ = framework.CasesDescribe("Passthrough", func() {
 				RoleRef: rbacv1.RoleRef{
 					Name: "e2e-impersonation-pods-list", Kind: "Role"},
 			}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Geting the token for the default ServiceAccount")
+		ginkgo.By("Geting the token for the default ServiceAccount")
 		sec, err := f.Helper().GetServiceAccountSecret(f.Namespace.Name, "default")
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		saTokenBytes, ok := sec.Data[corev1.ServiceAccountTokenKey]
 		if !ok {
 			err = fmt.Errorf("expected token to be present in secret %s/%s (%s): %+v",
 				sec.Name, sec.Namespace, corev1.ServiceAccountTokenKey, sec.Data)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 
 		saToken = string(saTokenBytes)
 	})
 
-	JustAfterEach(func() {
-		By("Deleting List Pods Role")
+	ginkgo.JustAfterEach(func() {
+		ginkgo.By("Deleting List Pods Role")
 		err := f.Helper().KubeClient.RbacV1().Roles(f.Namespace.Name).Delete(context.TODO(),
 			"e2e-impersonation-pods-list", metav1.DeleteOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Creating List Pods RoleBinding")
+		ginkgo.By("Creating List Pods RoleBinding")
 		err = f.Helper().KubeClient.RbacV1().RoleBindings(f.Namespace.Name).Delete(context.TODO(),
 			"e2e-impersonation-pods-list", metav1.DeleteOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
 
-	It("error when a valid OIDC token is used but return correct when passthrough is disabled", func() {
-		By("A valid OIDC token should respond without error")
+	ginkgo.It("error when a valid OIDC token is used but return correct when passthrough is disabled", func() {
+		ginkgo.By("A valid OIDC token should respond without error")
 		proxyClient := f.NewProxyClient()
 		_, err := proxyClient.CoreV1().Pods(f.Namespace.Name).List(context.TODO(), metav1.ListOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Using a ServiceAccount token should error by the proxy")
+		ginkgo.By("Using a ServiceAccount token should error by the proxy")
 
 		// Create requester using the ServiceAccount token
 		config := f.NewProxyRestConfig()
 		config.BearerToken = saToken
 
 		client, err := kubernetes.NewForConfig(config)
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		_, err = client.CoreV1().Pods(f.Namespace.Name).List(context.TODO(), metav1.ListOptions{})
 		kErr, ok := err.(*k8sErrors.StatusError)
 		if !ok {
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 
 		expRespBody := "Unauthorized"
@@ -108,29 +108,29 @@ var _ = framework.CasesDescribe("Passthrough", func() {
 		// Check body and status code the token was rejected
 		if int(kErr.Status().Code) != http.StatusUnauthorized ||
 			resp != expRespBody {
-			Expect(fmt.Errorf("expected status code %d with body %q, got= %d %q",
-				http.StatusUnauthorized, expRespBody, int(kErr.Status().Code), resp)).NotTo(HaveOccurred())
+			gomega.Expect(fmt.Errorf("expected status code %d with body %q, got= %d %q",
+				http.StatusUnauthorized, expRespBody, int(kErr.Status().Code), resp)).NotTo(gomega.HaveOccurred())
 		}
 	})
 
-	It("should not error on a valid OIDC token nor a valid ServiceAccount token with passthrough enabled", func() {
-		By("Enabling passthrough with Audience of the API Server")
+	ginkgo.It("should not error on a valid OIDC token nor a valid ServiceAccount token with passthrough enabled", func() {
+		ginkgo.By("Enabling passthrough with Audience of the API Server")
 		f.DeployProxyWith(nil, "--token-passthrough")
 
-		By("A valid OIDC token should respond without error")
+		ginkgo.By("A valid OIDC token should respond without error")
 		proxyClient := f.NewProxyClient()
 		_, err := proxyClient.CoreV1().Pods(f.Namespace.Name).List(context.TODO(), metav1.ListOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		By("Using a ServiceAccount token should not error")
+		ginkgo.By("Using a ServiceAccount token should not error")
 
 		// Create kube client using ServiceAccount token
 		proxyConfig := f.NewProxyRestConfig()
 		proxyConfig.BearerToken = saToken
 		kubeProxyClient, err := kubernetes.NewForConfig(proxyConfig)
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		_, err = kubeProxyClient.CoreV1().Pods(f.Namespace.Name).List(context.TODO(), metav1.ListOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
 })

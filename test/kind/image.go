@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -90,11 +89,13 @@ func (k *Kind) loadImage(binPath, mainPath, image, dockerfilePath string) error 
 		return err
 	}
 
-	tmpDir, err := ioutil.TempDir(os.TempDir(), "kube-oidc-proxy-e2e")
+	tmpDir, err := os.MkdirTemp(os.TempDir(), "kube-oidc-proxy-e2e")
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	imageArchive := filepath.Join(tmpDir, fmt.Sprintf("%s-e2e.tar", image))
 	log.Infof("kind: saving image to archive %q", imageArchive)
@@ -109,7 +110,7 @@ func (k *Kind) loadImage(binPath, mainPath, image, dockerfilePath string) error 
 		return err
 	}
 
-	b, err := ioutil.ReadFile(imageArchive)
+	b, err := os.ReadFile(imageArchive)
 	if err != nil {
 		return err
 	}

@@ -4,9 +4,10 @@ package server
 import (
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -18,7 +19,7 @@ type Server struct {
 }
 
 func New(keyFile, certFile string, stopCh <-chan struct{}) (*Server, error) {
-	b, err := ioutil.ReadFile(keyFile)
+	b, err := os.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +48,7 @@ func (s *Server) Run(bindAddress, listenPort string) (<-chan struct{}, error) {
 	go func() {
 		<-s.stopCh
 		if l != nil {
-			l.Close()
+			_ = l.Close()
 		}
 	}()
 
@@ -77,7 +78,7 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Errorf("failed to read request body: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)

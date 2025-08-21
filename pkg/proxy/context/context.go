@@ -6,7 +6,6 @@ import (
 
 	"github.com/sebest/xff"
 	"k8s.io/apiserver/pkg/authentication/user"
-	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/client-go/transport"
 
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
@@ -36,7 +35,7 @@ type ImpersonationRequest struct {
 
 // WithNoImpersonation returns a copy of the request in which the noImpersonation context value is set.
 func WithNoImpersonation(req *http.Request) *http.Request {
-	return req.WithContext(request.WithValue(req.Context(), noImpersonationKey, true))
+	return req.WithContext(genericapirequest.WithValue(req.Context(), noImpersonationKey, true))
 }
 
 // NoImpersonation returns whether the noImpersonation context key has been set
@@ -47,7 +46,7 @@ func NoImpersonation(req *http.Request) bool {
 
 // WithImpersonationConfig returns a copy of parent in which contains the impersonation configuration.
 func WithImpersonationConfig(req *http.Request, conf *ImpersonationRequest) *http.Request {
-	ctxToReturn := request.WithValue(req.Context(), impersonationConfigKey, conf)
+	ctxToReturn := genericapirequest.WithValue(req.Context(), impersonationConfigKey, conf)
 	if *conf.ImpersonatedUser != nil {
 		ctxToReturn = genericapirequest.WithUser(ctxToReturn, *conf.ImpersonatedUser)
 	}
@@ -62,7 +61,7 @@ func ImpersonationConfig(req *http.Request) *ImpersonationRequest {
 
 // WithBearerToken will add the bearer token to the request context from an http.Header to the request context.
 func WithBearerToken(req *http.Request, header http.Header) *http.Request {
-	return req.WithContext(request.WithValue(req.Context(), bearerTokenKey, header.Get("Authorization")))
+	return req.WithContext(genericapirequest.WithValue(req.Context(), bearerTokenKey, header.Get("Authorization")))
 }
 
 // BearerToken will return the bearer token stored in the request context.
@@ -80,7 +79,7 @@ func RemoteAddr(req *http.Request) (*http.Request, string) {
 	clientAddress, ok := ctx.Value(clientAddressKey).(string)
 	if !ok {
 		clientAddress = xff.GetRemoteAddr(req)
-		req = req.WithContext(request.WithValue(ctx, clientAddressKey, clientAddress))
+		req = req.WithContext(genericapirequest.WithValue(ctx, clientAddressKey, clientAddress))
 	}
 
 	return req, clientAddress

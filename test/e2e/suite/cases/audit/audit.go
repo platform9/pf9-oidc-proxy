@@ -11,8 +11,8 @@ import (
 	"reflect"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	ginkgo "github.com/onsi/ginkgo"
+	gomega "github.com/onsi/gomega"
 
 	authnv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,8 +25,8 @@ import (
 var _ = framework.CasesDescribe("Audit", func() {
 	f := framework.NewDefaultFramework("audit")
 
-	It("should be able to write audit logs to file", func() {
-		By("Creating policy file ConfigMap")
+	ginkgo.It("should be able to write audit logs to file", func() {
+		ginkgo.By("Creating policy file ConfigMap")
 		cm, err := f.Helper().KubeClient.CoreV1().ConfigMaps(f.Namespace.Name).Create(context.TODO(), &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "kube-oidc-proxy-policy-",
@@ -38,7 +38,7 @@ rules:
 - level: RequestResponse`,
 			},
 		}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		vols := []corev1.Volume{
 			corev1.Volume{
@@ -53,14 +53,14 @@ rules:
 			},
 		}
 
-		By("Deploying proxy with audit policy enabled")
+		ginkgo.By("Deploying proxy with audit policy enabled")
 		f.DeployProxyWith(vols, "--audit-log-path=/audit-log", "--audit-policy-file=/audit/audit.yaml")
 
 		testAuditLogs(f, "app=kube-oidc-proxy-e2e")
 	})
 
-	It("should be able to write audit logs to webhook", func() {
-		By("Creating policy file ConfigMap")
+	ginkgo.It("should be able to write audit logs to webhook", func() {
+		ginkgo.	By("Creating policy file ConfigMap")
 		cmPolicy, err := f.Helper().KubeClient.CoreV1().ConfigMaps(f.Namespace.Name).Create(context.TODO(), &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "kube-oidc-proxy-policy-",
@@ -72,10 +72,10 @@ rules:
 - level: RequestResponse`,
 			},
 		}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		extraWebhookVol, webhookURL, err := f.Helper().DeployAuditWebhook(f.Namespace.Name, "/audit-log")
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		cmWebhook, err := f.Helper().KubeClient.CoreV1().ConfigMaps(f.Namespace.Name).Create(context.TODO(), &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -99,7 +99,7 @@ preferences: {}
 users: []`,
 			},
 		}, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		vols := []corev1.Volume{
 			corev1.Volume{
@@ -125,7 +125,7 @@ users: []`,
 			extraWebhookVol,
 		}
 
-		By("Deploying proxy with audit policy enabled")
+		ginkgo.By("Deploying proxy with audit policy enabled")
 		f.DeployProxyWith(vols, "--audit-webhook-config-file=/audit-webhook/kubeconfig.yaml",
 			"--audit-policy-file=/audit/audit.yaml", "--audit-webhook-initial-backoff=1s", "--audit-webhook-batch-max-wait=1s")
 
@@ -134,10 +134,10 @@ users: []`,
 })
 
 func testAuditLogs(f *framework.Framework, podLabelSelector string) {
-	By("Making calls to proxy to ensure audit get created")
+	ginkgo.By("Making calls to proxy to ensure audit get created")
 	token := f.Helper().NewTokenPayload(f.IssuerURL(), f.ClientID(), time.Now().Add(time.Second*5))
 	signedToken, err := f.Helper().SignToken(f.IssuerKeyBundle(), token)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	proxyConfig := f.NewProxyRestConfig()
 	requester := f.Helper().NewRequester(proxyConfig.Transport, signedToken)
@@ -146,35 +146,35 @@ func testAuditLogs(f *framework.Framework, podLabelSelector string) {
 
 	// Make request that should succeed
 	_, _, err = requester.Get(target)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	// Make request that should be unauthenticated
 	requester = f.Helper().NewRequester(proxyConfig.Transport, "foo")
 	_, resp, err := requester.Get(target)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	if resp.StatusCode != http.StatusUnauthorized {
-		Expect(fmt.Errorf("expected to get unauthorized, got=%d", resp.StatusCode)).NotTo(HaveOccurred())
+		gomega.Expect(fmt.Errorf("expected to get unauthorized, got=%d", resp.StatusCode)).NotTo(gomega.HaveOccurred())
 	}
 
-	By("Waiting for audit logs to be written")
+	ginkgo.By("Waiting for audit logs to be written")
 	// 5 seconds here is longer than the proxy flush interval.
 	time.Sleep(time.Second * 5)
 
-	By("Copying audit log from proxy locally")
+	ginkgo.By("Copying audit log from proxy locally")
 	// Get pod
 	pods, err := f.Helper().KubeClient.CoreV1().Pods(f.Namespace.Name).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: podLabelSelector,
 	})
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	if len(pods.Items) != 1 {
-		Expect(fmt.Errorf("expected single kube-oidc-proxy pod running, got=%d", len(pods.Items))).NotTo(HaveOccurred())
+		gomega.Expect(fmt.Errorf("expected single kube-oidc-proxy pod running, got=%d", len(pods.Items))).NotTo(gomega.HaveOccurred())
 	}
 
 	var auditLogsBuffer bytes.Buffer
 	err = f.Helper().Kubectl(f.Namespace.Name).RunWithStdout(&auditLogsBuffer,
 		"exec", pods.Items[0].Name, "cat", "/audit-log")
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	logs := auditLogsBuffer.Bytes()
 	scanner := bufio.NewScanner(bytes.NewReader(logs))
@@ -217,16 +217,16 @@ func testAuditLogs(f *framework.Framework, podLabelSelector string) {
 		// },
 	}
 
-	By("Testing for expected audit logs")
+	ginkgo.By("Testing for expected audit logs")
 	var i int
 	for scanner.Scan() {
 		if i > len(expAuditEvents) {
-			Expect(fmt.Errorf("more proxy audit logs than expected, exp=%d got=%s", len(expAuditEvents), logs)).NotTo(HaveOccurred())
+			gomega.Expect(fmt.Errorf("more proxy audit logs than expected, exp=%d got=%s", len(expAuditEvents), logs)).NotTo(gomega.HaveOccurred())
 		}
 
 		var auditEvent auditv1.Event
 		err = json.Unmarshal(scanner.Bytes(), &auditEvent)
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		gotAuditEvent := auditv1.Event{
 			Level:      auditEvent.Level,
@@ -247,13 +247,13 @@ func testAuditLogs(f *framework.Framework, podLabelSelector string) {
 		}
 
 		if !reflect.DeepEqual(expAuditEvents[i], gotAuditEvent) {
-			Expect(fmt.Errorf("unexpected audit event\nexp=%v\ngot=%v", expAuditEvents[i], gotAuditEvent)).NotTo(HaveOccurred())
+			gomega.Expect(fmt.Errorf("unexpected audit event\nexp=%v\ngot=%v", expAuditEvents[i], gotAuditEvent)).NotTo(gomega.HaveOccurred())
 		}
 
 		i++
 	}
 
 	if i != len(expAuditEvents) {
-		Expect(fmt.Errorf("less proxy audit logs then expected, exp=%d, got=%s", len(expAuditEvents), logs)).NotTo(HaveOccurred())
+		gomega.Expect(fmt.Errorf("less proxy audit logs then expected, exp=%d, got=%s", len(expAuditEvents), logs)).NotTo(gomega.HaveOccurred())
 	}
 }

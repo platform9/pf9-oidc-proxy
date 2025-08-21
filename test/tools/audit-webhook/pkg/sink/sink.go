@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -28,7 +27,7 @@ type Sink struct {
 }
 
 func New(logPath, keyFile, certFile string, stopCh <-chan struct{}) (*Sink, error) {
-	b, err := ioutil.ReadFile(keyFile)
+	b, err := os.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +63,7 @@ func (s *Sink) Run(bindAddress, listenPort string) (<-chan struct{}, error) {
 	go func() {
 		<-s.stopCh
 		if l != nil {
-			l.Close()
+			_ = l.Close()
 		}
 	}()
 
@@ -104,7 +103,9 @@ func (s *Sink) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	for _, event := range events.Items {
 		if err := json.NewEncoder(f).Encode(event); err != nil {
