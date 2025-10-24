@@ -192,6 +192,7 @@ server once authenticated, impersonation is disabled for user requests to the
 API server.
 
 ![kube-oidc-proxy demo](https://storage.googleapis.com/kube-oidc-proxy/demo-9de755f8e4b4e5dd67d17addf09759860f903098.svg)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fplatform9%2Fpf9-oidc-proxy.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fplatform9%2Fpf9-oidc-proxy?ref=badge_shield)
 
 The following is a diagram of the request flow for a user request.
 ![kube-oidc-proxy request
@@ -342,3 +343,7 @@ When using `Impersonate-Extra-` headers, the proxy's `ServiceAccount` must be ex
 To help with development, there is a suite of tools you can use to deploy a
 functioning proxy from source locally. You can read more
 [here](./docs/tasks/development-testing.md).
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fplatform9%2Fpf9-oidc-proxy.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fplatform9%2Fpf9-oidc-proxy?ref=badge_large)
