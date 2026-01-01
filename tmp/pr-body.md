@@ -2,5 +2,4 @@
 
 | Target | Package | Severity | Title | CVE | Installed | Fixed |
 |--------|---------|----------|-------|-----|-----------|-------|
-| go.mod | golang.org/x/crypto | CRITICAL | golang.org/x/crypto/ssh: Misuse of ServerConfig.PublicKeyCallback may cause authorization bypass in golang.org/x/crypto | CVE-2024-45337 | v0.0.0-20220722155217-630584e8d5aa | 0.31.0 |
-| go.mod | golang.org/x/crypto | HIGH | golang.org/x/crypto/ssh: Denial of Service in the Key Exchange of golang.org/x/crypto/ssh | CVE-2025-22869 | v0.0.0-20220722155217-630584e8d5aa | 0.35.0 |
+| go.mod | golang.org/x/oauth2 | HIGH | golang.org/x/oauth2/jws: Unexpected memory consumption during token parsing in golang.org/x/oauth2/jws | CVE-2025-22868 | v0.21.0 | 0.27.0 |
