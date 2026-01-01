@@ -1,0 +1,75 @@
+name: Go Lint
+'on':
+  push:
+    branches:
+      - pf9-oidc
+      - private/harsh/soc2-scan
+      - private/soc2
+  pull_request:
+
+jobs:
+  setup:
+    name: Shared Setup
+    runs-on: ubuntu-latest
+    outputs:
+      go-version: '1.21'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      - name: Export Go Version
+        run: echo "go-version=1.21" >> $GITHUB_OUTPUT
+
+  golangci-lint:
+    name: GolangCI Lint & Auto PR
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ needs.setup.outputs.go-version }}
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
+            | sh -s -- -b $(go env GOPATH)/bin v1.59.0
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Run golangci-lint
+        id: golangci
+        run: |
+          echo "🔍 Running golangci-lint..."
+          golangci-lint run ./... > golangci_output.txt || true
+          cat golangci_output.txt
+          if [ -s golangci_output.txt ]; then
+            echo "lint_issues=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "lint_issues=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create PR if Issues Found
+        if: ${{ steps.golangci.outputs.lint_issues == 'true' }}
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: 'chore: fix golangci-lint issues'
+          title: 'chore: GolangCI Lint Issues Found'
+          body: |
+            ## ⚠️ GolangCI Lint Issues Found
+            See `golangci_output.txt` for full details.
+          branch: auto/golangci-lint-issues
+          base: pf9-oidc
+          add-paths: |
+            golangci_output.txt
+
+      - name: Fail job if issues found
+        if: ${{ steps.golangci.outputs.lint_issues == 'true' }}
+        run: |
+          echo "❌ GolangCI lint issues found — failing job."
+          exit 1
