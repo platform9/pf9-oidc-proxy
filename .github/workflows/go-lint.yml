@@ -1,0 +1,93 @@
+name: Go Lint
+'on':
+  push:
+    branches:
+      - pf9-oidc
+      - private/soc2
+  pull_request:
+
+jobs:
+  setup:
+    name: Shared Setup
+    runs-on: ubuntu-latest
+    outputs:
+      go-version: '1.21'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      - name: Export Go Version
+        run: echo "go-version=1.21" >> $GITHUB_OUTPUT
+
+  golangci-lint-and-pr:
+    name: GolangCI Lint & Auto PR
+    needs: setup
+    runs-on: ubuntu-latest
+    outputs:
+      golangci-issues-found: ${{ steps.scan.outputs.golangci_issues_found }}
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ needs.setup.outputs.go-version }}
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
+            | sh -s -- -b $(go env GOPATH)/bin v1.59.0
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Sanitize branch name
+        run: echo "SAFE_REF_NAME=${GITHUB_REF_NAME//\//-}" >> $GITHUB_ENV
+
+      - name: Run GolangCI Lint Scan
+        id: scan
+        run: |
+          echo "Running GolangCI lint scan..."
+          mkdir -p tmp
+          golangci-lint run ./... --out-format=json > tmp/golangci_output.json || true
+          echo -e "\nHuman-readable GolangCI output:\n"
+          golangci-lint run ./... || true
+          cat tmp/golangci_output.json || echo "{}"
+          
+          issue_count=$(jq '.Issues | length' tmp/golangci_output.json 2>/dev/null || echo 0)
+          
+          if [[ "$issue_count" -gt 0 ]]; then
+            echo "golangci_issues_found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "golangci_issues_found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload GolangCI Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: golangci-json-${{ env.SAFE_REF_NAME }}
+          path: tmp/golangci_output.json
+
+      - name: Generate PR Body (if issues found)
+        if: ${{ steps.scan.outputs.golangci_issues_found == 'true' }}
+        run: |
+          echo "# GolangCI Lint Report for branch \`${GITHUB_REF_NAME}\`" > tmp/pr-body.md
+          jq -r '.Issues[] | "* File: \(.Pos.Filename)\n  • Line: \(.Pos.Line)\n  • Column: \(.Pos.Column)\n  • Linter: \(.FromLinter)\n  • Message: \(.Text)\n"' \
+            tmp/golangci_output.json >> tmp/pr-body.md
+
+      - name: Create Pull Request (if issues found)
+        if: ${{ github.event_name == 'push' && steps.scan.outputs.golangci_issues_found == 'true' }}
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: 'chore: GolangCI lint issues detected'
+          title: 'GolangCI Lint Report for branch ${{ github.ref_name }}'
+          body-path: tmp/pr-body.md
+          branch: auto/golangci-lint/${{ env.SAFE_REF_NAME }}
+          base: ${{ github.ref_name }}
+          delete-branch: true
+
+      - name: Fail Job If Issues Found
+        if: ${{ steps.scan.outputs.golangci_issues_found == 'true' }}
+        run: exit 1

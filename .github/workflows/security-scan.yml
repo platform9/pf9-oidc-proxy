@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - pf9-oidc
-      - private/harsh/soc2-scan
+      - private/soc2
   pull_request:
 
 jobs:
