@@ -3,7 +3,10 @@
 package proxy
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestModifyNamespaceInPath(t *testing.T) {
@@ -100,4 +103,72 @@ func TestModifyNamespaceInPath(t *testing.T) {
 			}
 		})
 	}
+}
+
+// writeProjectedVersion lays down one timestamped payload directory the way
+// kubelet's atomic writer does, and returns its path.
+func writeProjectedVersion(t *testing.T, dir, stamp, content string) string {
+	t.Helper()
+	d := filepath.Join(dir, stamp)
+	if err := os.Mkdir(d, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", d, err)
+	}
+	if err := os.WriteFile(filepath.Join(d, "ns-mapping.json"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write payload: %v", err)
+	}
+	return d
+}
+
+// TestMappingManagerReloadsOnConfigMapSwap reproduces how kubelet updates a
+// projected ConfigMap volume:
+//
+//	ns-mapping.json -> ..data/ns-mapping.json
+//	..data          -> ..<timestamp>
+//
+// An update writes a new timestamped directory, creates ..data_tmp, renames it
+// onto ..data, then deletes the old directory. The mapping file is never
+// written in place and its target inode is replaced, so a watcher registered
+// on the file itself goes deaf after the first update.
+func TestMappingManagerReloadsOnConfigMapSwap(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "ns-mapping.json")
+
+	first := writeProjectedVersion(t, dir, "..2000_01_01_00_00_00", `{"tenant1":"ns-one"}`)
+	if err := os.Symlink(filepath.Base(first), filepath.Join(dir, "..data")); err != nil {
+		t.Fatalf("symlink ..data: %v", err)
+	}
+	if err := os.Symlink(filepath.Join("..data", "ns-mapping.json"), file); err != nil {
+		t.Fatalf("symlink mapping file: %v", err)
+	}
+
+	m, err := NewMappingManager(file)
+	if err != nil {
+		t.Fatalf("NewMappingManager: %v", err)
+	}
+	if ns, ok := m.GetNamespace("tenant1"); !ok || ns != "ns-one" {
+		t.Fatalf("initial load: got (%q, %v), want (%q, true)", ns, ok, "ns-one")
+	}
+
+	// kubelet's atomic swap.
+	second := writeProjectedVersion(t, dir, "..2000_01_01_00_00_01", `{"tenant1":"ns-two"}`)
+	tmp := filepath.Join(dir, "..data_tmp")
+	if err := os.Symlink(filepath.Base(second), tmp); err != nil {
+		t.Fatalf("symlink ..data_tmp: %v", err)
+	}
+	if err := os.Rename(tmp, filepath.Join(dir, "..data")); err != nil {
+		t.Fatalf("rename onto ..data: %v", err)
+	}
+	if err := os.RemoveAll(first); err != nil {
+		t.Fatalf("remove old payload: %v", err)
+	}
+
+	// Reloading is asynchronous.
+	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); {
+		if ns, ok := m.GetNamespace("tenant1"); ok && ns == "ns-two" {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	ns, _ := m.GetNamespace("tenant1")
+	t.Fatalf("mapping not reloaded after ConfigMap swap: got %q, want %q", ns, "ns-two")
 }

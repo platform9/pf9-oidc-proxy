@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -18,6 +19,10 @@ import (
 
 const (
 	labelSelectorPrefix = "pcd-kaapi.pf9.io/region="
+
+	// kubeletDataSymlink is the indirection kubelet swaps when it updates a
+	// projected ConfigMap or Secret volume.
+	kubeletDataSymlink = "..data"
 )
 
 type MappingManager struct {
@@ -63,7 +68,6 @@ func (m *MappingManager) loadMappings(filePath string) error {
 	return nil
 }
 
-// watchFile monitors the file for changes and reloads it
 func (m *MappingManager) watchFile(filePath string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -72,22 +76,30 @@ func (m *MappingManager) watchFile(filePath string) {
 	}
 	defer watcher.Close()
 
-	err = watcher.Add(filePath)
-	if err != nil {
-		fmt.Println("Failed to watch file:", err)
+	dir := filepath.Dir(filePath)
+	if err := watcher.Add(dir); err != nil {
+		fmt.Println("Failed to watch mapping directory:", err)
 		return
 	}
 
+	base := filepath.Base(filePath)
 	for {
 		select {
 		case event, ok := <-watcher.Events:
 			if !ok {
 				return
 			}
-			if event.Op&fsnotify.Write == fsnotify.Write {
-				fmt.Println("Mapping file updated, reloading...")
-				m.loadMappings(filePath)
+			if name := filepath.Base(event.Name); name != kubeletDataSymlink && name != base {
+				continue
 			}
+			if err := m.loadMappings(filePath); err != nil {
+				// A swap is not atomic from the reader's point of view, so a
+				// transient failure here is expected; loadMappings leaves the
+				// previous mappings in place.
+				fmt.Println("Failed to reload mapping file:", err)
+				continue
+			}
+			fmt.Println("Mapping file updated, reloaded")
 		case err, ok := <-watcher.Errors:
 			if !ok {
 				return
